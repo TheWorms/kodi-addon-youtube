@@ -1,0 +1,171 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: plugin.video.ytlocal\n"
+"Language: en_GB\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgctxt "#30001"
+msgid "Search"
+msgstr ""
+
+msgctxt "#30002"
+msgid "Subscriptions"
+msgstr ""
+
+msgctxt "#30003"
+msgid "New videos"
+msgstr ""
+
+msgctxt "#30004"
+msgid "History"
+msgstr ""
+
+msgctxt "#30005"
+msgid "Open URL or ID"
+msgstr ""
+
+msgctxt "#30006"
+msgid "Settings"
+msgstr ""
+
+msgctxt "#30007"
+msgid "Recent searches"
+msgstr ""
+
+msgctxt "#30010"
+msgid "Next page"
+msgstr ""
+
+msgctxt "#30011"
+msgid "Videos"
+msgstr ""
+
+msgctxt "#30012"
+msgid "Channels"
+msgstr ""
+
+msgctxt "#30013"
+msgid "Playlists"
+msgstr ""
+
+msgctxt "#30020"
+msgid "Subscribe"
+msgstr ""
+
+msgctxt "#30021"
+msgid "Unsubscribe"
+msgstr ""
+
+msgctxt "#30022"
+msgid "Go to channel"
+msgstr ""
+
+msgctxt "#30023"
+msgid "Remove from history"
+msgstr ""
+
+msgctxt "#30024"
+msgid "Clear history"
+msgstr ""
+
+msgctxt "#30025"
+msgid "Clear recent searches"
+msgstr ""
+
+msgctxt "#30030"
+msgid "Enter search"
+msgstr ""
+
+msgctxt "#30031"
+msgid "YouTube URL or video ID"
+msgstr ""
+
+msgctxt "#30032"
+msgid "No results"
+msgstr ""
+
+msgctxt "#30033"
+msgid "Playback failed"
+msgstr ""
+
+msgctxt "#30034"
+msgid "Subscription added"
+msgstr ""
+
+msgctxt "#30035"
+msgid "Subscription removed"
+msgstr ""
+
+msgctxt "#30036"
+msgid "Sponsor segment skipped"
+msgstr ""
+
+msgctxt "#30037"
+msgid "No subscriptions yet"
+msgstr ""
+
+msgctxt "#30040"
+msgid "views"
+msgstr ""
+
+msgctxt "#30100"
+msgid "General"
+msgstr ""
+
+msgctxt "#30101"
+msgid "Playback mode"
+msgstr ""
+
+msgctxt "#30102"
+msgid "Progressive stream (reliable, up to about 720p)"
+msgstr ""
+
+msgctxt "#30103"
+msgid "Adaptive HLS (experimental)"
+msgstr ""
+
+msgctxt "#30104"
+msgid "Maximum quality"
+msgstr ""
+
+msgctxt "#30105"
+msgid "Items per page"
+msgstr ""
+
+msgctxt "#30106"
+msgid "Cookies file (optional)"
+msgstr ""
+
+msgctxt "#30107"
+msgid "SponsorBlock: skip sponsored segments automatically"
+msgstr ""
+
+msgctxt "#30110"
+msgid "Playback"
+msgstr ""
+
+msgctxt "#30120"
+msgid "360p"
+msgstr ""
+
+msgctxt "#30121"
+msgid "480p"
+msgstr ""
+
+msgctxt "#30122"
+msgid "720p"
+msgstr ""
+
+msgctxt "#30123"
+msgid "1080p"
+msgstr ""
+
+msgctxt "#30124"
+msgid "1440p"
+msgstr ""
+
+msgctxt "#30125"
+msgid "2160p (4K)"
+msgstr ""
