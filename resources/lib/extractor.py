@@ -6,6 +6,7 @@ Quand YouTube casse quelque chose, on met à jour yt-dlp (resources/lib/vendor) 
 le reste de l'addon ne bouge pas.
 """
 import os
+import re
 import shutil
 import sys
 from dataclasses import dataclass, field
@@ -94,6 +95,7 @@ class _KodiLogger:
 class Stream:
     url: str
     title: str = ''
+    max_height: int = 0  # plafond de qualité transmis à inputstream.adaptive (HLS)
     thumb: str = ''
     fanart: str = ''
     duration: int = 0
@@ -195,6 +197,42 @@ def _progressive_candidates(formats, max_height):
 
 
 PROBE_BYTES = 256 * 1024
+_STREAM_INF = re.compile(r'BANDWIDTH=(\d+)(?:.*?RESOLUTION=\d+x(\d+))?')
+
+
+def _probe_hls(master_url, headers, max_height, timeout=6):
+    """Le HLS se lit-il vraiment ? Manifeste, variante choisie, premier segment."""
+    import urllib.request
+    from urllib.parse import urljoin
+
+    def get(url, limit=None):
+        req = urllib.request.Request(url, headers=dict(headers))
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if resp.status not in (200, 206):
+                raise IOError('HTTP %s' % resp.status)
+            return resp.read(limit) if limit else resp.read()
+    try:
+        master = get(master_url).decode('utf-8', 'replace')
+        if '#EXTM3U' not in master:
+            return False
+        variants, pending = [], None
+        for line in master.splitlines():
+            line = line.strip()
+            if line.startswith('#EXT-X-STREAM-INF'):
+                m = _STREAM_INF.search(line)
+                pending = (int(m.group(2) or 0), int(m.group(1))) if m else (0, 0)
+            elif line and not line.startswith('#') and pending is not None:
+                variants.append((pending, urljoin(master_url, line)))
+                pending = None
+        if not variants:
+            return False
+        fit = [v for v in variants if v[0][0] <= max_height] or variants
+        variant_url = max(fit)[1]
+        playlist = get(variant_url).decode('utf-8', 'replace')
+        segment = next((l.strip() for l in playlist.splitlines() if l.strip() and not l.startswith('#')), '')
+        return bool(segment) and len(get(urljoin(variant_url, segment), 65536)) > 0
+    except Exception:  # erreur HTTP, connexion coupée, délai dépassé
+        return False
 
 
 def _probe(url, headers, timeout=6):
@@ -432,14 +470,18 @@ class Extractor:
             if not hls_url:
                 return None
             headers = {'User-Agent': ua} if ua else {}
-            return Stream(url=hls_url, manifest='hls', headers=headers,
+            return Stream(url=hls_url, manifest='hls', headers=headers, max_height=self.max_height,
                           mime='application/vnd.apple.mpegurl', **base)
 
-        # 1) HLS adaptatif (réglage, ou obligatoire pour un direct)
+        # 1) HLS adaptatif : HD (jusqu'au 1080p, son inclus) fournie notamment
+        #    par web_embedded sans PO Token ; obligatoire pour un direct.
         if self.hls or info.get('is_live'):
             stream = hls_stream()
-            if stream is not None:
+            if stream is not None and (not probe or info.get('is_live')
+                                       or _probe_hls(stream.url, stream.headers, self.max_height)):
                 return stream
+            if stream is not None:
+                xbmc.log('[wtube] %s : flux HLS refusé par YouTube' % video_id, xbmc.LOGINFO)
 
         # 2) Flux progressif audio+vidéo (plafonné ~720p), testé avant usage
         for fmt in _progressive_candidates(formats, self.max_height):

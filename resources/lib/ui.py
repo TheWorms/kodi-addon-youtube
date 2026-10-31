@@ -99,6 +99,8 @@ def playable_item(stream):
         hdr = stream.header_string()
         if hdr:
             li.setProperty('inputstream.adaptive.stream_headers', hdr)
+        if stream.max_height:  # plafond de qualité choisi dans les réglages
+            li.setProperty('inputstream.adaptive.chooser_resolution_max', _resolution_label(stream.max_height))
     else:
         li = xbmcgui.ListItem(label=stream.title, path=stream.kodi_url())
     if stream.mime:
@@ -109,3 +111,11 @@ def playable_item(stream):
     if stream.subtitles:
         li.setSubtitles(stream.subtitles)
     return li
+
+
+def _resolution_label(height):
+    """Valeurs reconnues par inputstream.adaptive pour chooser_resolution_max."""
+    for limit, label in ((480, '480p'), (640, '640p'), (720, '720p'), (1080, '1080p'), (1440, '1440p')):
+        if height <= limit:
+            return label
+    return '4K'

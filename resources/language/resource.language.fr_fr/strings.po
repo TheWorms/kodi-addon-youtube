@@ -116,12 +116,12 @@ msgid "Playback mode"
 msgstr "Mode de lecture"
 
 msgctxt "#30102"
-msgid "Progressive stream (reliable, up to about 720p)"
-msgstr "Flux progressif (fiable, jusqu'à environ 720p)"
+msgid "Direct stream, 360p (most compatible)"
+msgstr "Flux direct 360p (le plus compatible)"
 
 msgctxt "#30103"
-msgid "Adaptive HLS (experimental)"
-msgstr "HLS adaptatif (expérimental)"
+msgid "HD via HLS when available (recommended)"
+msgstr "HD en HLS quand disponible (recommandé)"
 
 msgctxt "#30104"
 msgid "Maximum quality"

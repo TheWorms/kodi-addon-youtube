@@ -3,7 +3,7 @@
 # Wtube — YouTube pour Kodi
 
 <!-- version:auto -->
-**Version : 0.6.8**
+**Version : 0.6.9**
 <!-- /version:auto -->
 
 Module Kodi pour regarder **YouTube sans compte et sans clé d'API Google**, avec une interface
@@ -54,6 +54,8 @@ première fois qu'une vidéo est bloquée.
   onglets Vidéos / Playlists ; favoris ; historique.
 - **Abonnements sans compte** — stockés sur l'appareil ; nouveautés lues dans les flux RSS
   publics des chaînes, rafraîchies en arrière-plan. Shorts masquables.
+- **HD jusqu'au 1080p** — flux HLS (son inclus) servi sans PO Token à l'identité « web_embedded »,
+  testé avant la lecture ; repli automatique sur le flux direct 360p.
 - **SponsorBlock sans coupure** — un relais HLS local retire les segments sponsorisés du flux
   avant la lecture (méthode « saut » disponible en repli).
 - **Reprise de lecture** — « Reprendre à … / Lire depuis le début » au lancement (ou toujours /

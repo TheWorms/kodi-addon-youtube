@@ -3,7 +3,7 @@
 # Wtube — YouTube for Kodi
 
 <!-- version:auto -->
-**Version : 0.6.8**
+**Version : 0.6.9**
 <!-- /version:auto -->
 
 Kodi add-on to watch **YouTube without an account or a Google API key**, with a full-screen
@@ -52,6 +52,8 @@ engine YouTube requires. The add-on also offers it the first time a video is blo
   Videos / Playlists tabs; favourites; history.
 - **Subscriptions without an account** — stored on the device; new videos read from the
   channels' public RSS feeds, refreshed in the background. Shorts can be hidden.
+- **HD up to 1080p** — HLS stream (with audio) served without a PO Token to the "web_embedded"
+  client, checked before playback; automatic fallback to the 360p direct stream.
 - **Seamless SponsorBlock** — a local HLS relay removes sponsored segments from the stream
   before playback (skip method available as a fallback).
 - **Resume playback** — "Resume from … / Play from the beginning" on start (or always /

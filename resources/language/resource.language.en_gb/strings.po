@@ -116,11 +116,11 @@ msgid "Playback mode"
 msgstr ""
 
 msgctxt "#30102"
-msgid "Progressive stream (reliable, up to about 720p)"
+msgid "Direct stream, 360p (most compatible)"
 msgstr ""
 
 msgctxt "#30103"
-msgid "Adaptive HLS (experimental)"
+msgid "HD via HLS when available (recommended)"
 msgstr ""
 
 msgctxt "#30104"
