@@ -3,7 +3,7 @@
 # Wtube — YouTube for Kodi
 
 <!-- version:auto -->
-**Version : 0.6.3**
+**Version : 0.6.4**
 <!-- /version:auto -->
 
 Kodi add-on to watch **YouTube without an account or a Google API key**, with a full-screen
@@ -12,6 +12,22 @@ interface. Inspired by **NewPipe / PipePipe**: extraction runs on the device wit
 sponsored segments are removed thanks to [SponsorBlock](https://sponsor.ajay.app).
 
 > Independent project, not affiliated with YouTube or Google. YouTube is a trademark of Google LLC.
+
+## Screenshots
+
+![Home: featured video, new from subscriptions, recent videos](.github/screenshots/accueil.jpg)
+
+| Search | Followed channels |
+|:---:|:---:|
+| ![Search](.github/screenshots/recherche.jpg) | ![Followed channels](.github/screenshots/chaines.jpg) |
+| **History** | **Settings — Playback** |
+| ![History](.github/screenshots/historique.jpg) | ![Settings, playback](.github/screenshots/reglages-lecture.jpg) |
+
+<details><summary>Settings — General</summary>
+
+![Settings, general](.github/screenshots/reglages-general.jpg)
+
+</details>
 
 ## Installation
 

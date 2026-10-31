@@ -52,22 +52,34 @@ def video_fanart(video_id):
     return 'https://i.ytimg.com/vi/%s/maxresdefault.jpg' % video_id
 
 
+_BG = {}
+
+
+def _background_settings():
+    """Réglage lu une seule fois par appel du plugin (un Addon() par élément
+    coûtait cher sur les petites box : jusqu'à 30 lectures par widget)."""
+    if not _BG:
+        import os
+        import xbmcaddon
+        addon = xbmcaddon.Addon('plugin.video.wtube')
+        try:
+            _BG['mode'] = int(addon.getSetting('widget_fanart') or 0)
+        except ValueError:
+            _BG['mode'] = 0
+        _BG['fanart'] = os.path.join(addon.getAddonInfo('path'), 'resources', 'fanart.jpg')
+    return _BG['mode'], _BG['fanart']
+
+
 def background_art(video_id):
     """Fond (fanart) d'une vidéo dans les widgets et listes, selon le réglage
     « widget_fanart » : 0 image HD de la vidéo, 1 vignette, 2 fanart Wtube,
     3 aucun (fond du skin)."""
-    import os
-    import xbmcaddon
-    addon = xbmcaddon.Addon('plugin.video.wtube')
-    try:
-        mode = int(addon.getSetting('widget_fanart') or 0)
-    except ValueError:
-        mode = 0
+    mode, addon_fanart = _background_settings()
     art = {'landscape': video_fanart(video_id)}
     if mode == 0:
         art['fanart'] = video_fanart(video_id)
     elif mode == 1:
         art['fanart'] = 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % video_id
     elif mode == 2:
-        art['fanart'] = os.path.join(addon.getAddonInfo('path'), 'resources', 'fanart.jpg')
+        art['fanart'] = addon_fanart
     return art

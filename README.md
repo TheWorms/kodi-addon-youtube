@@ -3,7 +3,7 @@
 # Wtube — YouTube pour Kodi
 
 <!-- version:auto -->
-**Version : 0.6.3**
+**Version : 0.6.4**
 <!-- /version:auto -->
 
 Module Kodi pour regarder **YouTube sans compte et sans clé d'API Google**, avec une interface
@@ -13,6 +13,22 @@ restent **en local**, et les passages sponsorisés sont retirés grâce à
 [SponsorBlock](https://sponsor.ajay.app).
 
 > Projet indépendant, sans lien avec YouTube ni Google. YouTube est une marque de Google LLC.
+
+## Captures d'écran
+
+![Accueil : vidéo à la une, nouveautés des abonnements, vidéos récentes](.github/screenshots/accueil.jpg)
+
+| Recherche | Chaînes suivies |
+|:---:|:---:|
+| ![Recherche](.github/screenshots/recherche.jpg) | ![Chaînes suivies](.github/screenshots/chaines.jpg) |
+| **Historique** | **Réglages — Lecture** |
+| ![Historique](.github/screenshots/historique.jpg) | ![Réglages, lecture](.github/screenshots/reglages-lecture.jpg) |
+
+<details><summary>Réglages — Général</summary>
+
+![Réglages, général](.github/screenshots/reglages-general.jpg)
+
+</details>
 
 ## Installation
 
