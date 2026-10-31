@@ -101,6 +101,7 @@ def playable_item(stream):
             li.setProperty('inputstream.adaptive.stream_headers', hdr)
         if stream.max_height:  # plafond de qualité choisi dans les réglages
             li.setProperty('inputstream.adaptive.chooser_resolution_max', _resolution_label(stream.max_height))
+
     else:
         li = xbmcgui.ListItem(label=stream.title, path=stream.kodi_url())
     if stream.mime:

@@ -21,6 +21,7 @@ RESUME_MIN = 15          # en dessous, on repart du début
 RESUME_END_MARGIN = 30   # dans les 30 dernières secondes : vidéo considérée comme vue
 NEXT_ASK_TIMEOUT = 15    # secondes avant que la question « vidéo suivante » se ferme (= arrêt)
 PRELOAD_BEFORE = 90      # secondes avant la fin : résolution de la vidéo suivante
+REWIND_FROM = 3.0        # démarrage HLS au-delà : premier segment sauté, on revient à 0:00
 FADE_BEFORE = 0.6        # secondes avant la fin : début du fondu au noir (court : ne pas manger la fin)
 
 
@@ -498,7 +499,8 @@ class Router:
         helper = _NextHelper(self, video_id, mode) if mode else None
         try:
             ended = self._watch(video_id, [] if relayed else segments, kick,
-                                on_tick=helper.tick if helper else None)
+                                on_tick=helper.tick if helper else None,
+                                rewind=stream.manifest == 'hls' and not start and not stream.is_live)
             if ended and helper:
                 self._play_next(video_id, helper)
         finally:
@@ -548,7 +550,7 @@ class Router:
             helper.fade.into()
             helper.fade = None
 
-    def _watch(self, video_id, skip_segments, kick_audio, on_tick=None):
+    def _watch(self, video_id, skip_segments, kick_audio, on_tick=None, rewind=False):
         """Suit la lecture : position de reprise, saut SponsorBlock (ancienne
         méthode) et relance du son au démarrage des flux HLS."""
         monitor, player = xbmc.Monitor(), _EndWatcher()
@@ -564,6 +566,7 @@ class Router:
         position = total = 0.0
         saved_at = 0.0
         done = set()
+        first = True
         while not monitor.abortRequested() and player.isPlayingVideo():
             try:
                 if player.getPlayingFile() != playing_file:
@@ -572,6 +575,16 @@ class Router:
                 total = player.getTotalTime() or total
             except RuntimeError:
                 break
+            if first:
+                first = False
+                log('%s : position au démarrage %.1f s' % (video_id, position))
+                if rewind and REWIND_FROM <= position < REWIND_FROM + 6:
+                    # inputstream.adaptive saute parfois le premier segment HLS
+                    # (5 s chez YouTube) en changeant de qualité au démarrage :
+                    # retour au tout début, le mode adaptatif reste actif.
+                    player.seekTime(0)
+                    position = 0.0
+                    log('%s : premier segment sauté, retour à 0:00' % video_id)
             if kick_audio and position > 1.0:
                 # Le son de certains flux HLS ne démarre qu'après un premier saut :
                 # un saut sur place le fait partir dès le début.
