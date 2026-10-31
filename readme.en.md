@@ -3,7 +3,7 @@
 # Wtube — YouTube for Kodi
 
 <!-- version:auto -->
-**Version : 0.6.0**
+**Version : 0.6.1**
 <!-- /version:auto -->
 
 Kodi add-on to watch **YouTube without an account or a Google API key**, with a full-screen
@@ -42,6 +42,8 @@ engine YouTube requires. The add-on also offers it the first time a video is blo
   never), progress bars on thumbnails.
 - **Autoplay** — when a video ends, the next one from the same list (screen, widget, channel,
   playlist) starts, with or without a prompt (configurable).
+- **Play all** — from a video's menu: the whole list or from that video on (channel,
+  favourites, search…), Next / Previous to move between videos.
 - **Context menu** — play next, queue, favourites, go to channel, subscribe, mark as
   watched, play a whole playlist.
 - **Skin home widgets** — new videos, one video per channel, continue watching, recently

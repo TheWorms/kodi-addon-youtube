@@ -593,6 +593,12 @@ class MainWindow(xbmcgui.WindowXML):
             vid, title, thumb = li.getProperty('ytid'), li.getLabel(), li.getArt('thumb')
             cid, cname = li.getProperty('channel_id'), li.getProperty('channel')
             options.append((L(30207), lambda: self._play(vid, title, thumb)))
+            videos = self._videos_of(fid)
+            pos = next((i for i, v in enumerate(videos) if v['id'] == vid), -1)
+            if len(videos) > 1:
+                if 0 < pos < len(videos) - 1:
+                    options.append((L(30296), lambda: self._play_all(videos[pos:])))
+                options.append((L(30297), lambda: self._play_all(videos)))
             options.append((L(30251), lambda: self._queue(vid, title, thumb, play_next=True)))
             options.append((L(30252), lambda: self._queue(vid, title, thumb)))
             if self._is_favorite(vid):
@@ -652,16 +658,35 @@ class MainWindow(xbmcgui.WindowXML):
         queue.add(url, item)
         notify(L(30260) % queue.size())
 
+    def _videos_of(self, cid):
+        """Vidéos chargées dans un conteneur, dans l'ordre affiché."""
+        c = self._ctrl(cid) if cid in ITEM_CONTAINERS else None
+        out = []
+        try:
+            for i in range(c.size() if c else 0):
+                li = c.getListItem(i)
+                if li.getProperty('kind') == 'video' and li.getProperty('ytid'):
+                    out.append({'id': li.getProperty('ytid'), 'title': li.getLabel(), 'thumb': li.getArt('thumb')})
+        except RuntimeError:
+            return []
+        return out
+
+    def _play_all(self, videos):
+        """Lit la liste dans la file Kodi : Suivant / Précédent de la télécommande
+        passent d'une vidéo à l'autre, sans question de reprise."""
+        queue = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
+        queue.clear()
+        for v in videos:
+            url, item = self._queue_item(v['id'], v.get('title'), v.get('thumb'))
+            queue.add(url + '&chain=1', item)
+        xbmc.Player().play(queue)
+
     def _play_playlist(self, playlist_id):
         _title, entries = self.ex.playlist_page(playlist_id, 1, 100)
         entries = [e for e in entries if e.get('id')]
         if not entries or self._closed.is_set():
             return
-        queue = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
-        queue.clear()
-        for e in entries:
-            queue.add(*self._queue_item(e['id'], e.get('title'), e.get('thumb')))
-        xbmc.Player().play(queue)
+        self._play_all(entries)
 
     def _is_favorite(self, video_id):
         db = self._db()

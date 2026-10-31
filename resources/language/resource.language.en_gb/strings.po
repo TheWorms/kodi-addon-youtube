@@ -514,3 +514,11 @@ msgstr ""
 msgctxt "#30295"
 msgid "Stop"
 msgstr ""
+
+msgctxt "#30296"
+msgid "Play all from here"
+msgstr ""
+
+msgctxt "#30297"
+msgid "Play all"
+msgstr ""

@@ -514,3 +514,11 @@ msgstr "Lire"
 msgctxt "#30295"
 msgid "Stop"
 msgstr "Arrêter"
+
+msgctxt "#30296"
+msgid "Play all from here"
+msgstr "Tout lire à partir d'ici"
+
+msgctxt "#30297"
+msgid "Play all"
+msgstr "Tout lire"
