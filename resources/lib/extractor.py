@@ -187,6 +187,12 @@ def _pick_progressive(formats, max_height):
     return max(ok, key=lambda f: (f.get('height') or 0, f.get('tbr') or 0), default=None)
 
 
+def _needs_po_token(fmt):
+    """Flux direct servi au client mweb : refusé par YouTube sans PO Token."""
+    from urllib.parse import parse_qs, urlparse
+    return parse_qs(urlparse(fmt.get('url') or '').query).get('c', [''])[0].upper() == 'MWEB'
+
+
 def _pick_hls(info):
     """URL du manifeste HLS (live, ou VOD si le client YouTube en fournit un)."""
     if info.get('is_live') and info.get('manifest_url'):
@@ -362,6 +368,11 @@ class Extractor:
 
         # 2) Flux progressif audio+vidéo (fiable, plafonné ~720p)
         fmt = _pick_progressive(formats, self.max_height)
+        if fmt is not None and _needs_po_token(fmt) and _pick_hls(info):
+            # Les flux directs du client mweb exigent désormais un « PO Token » :
+            # sans lui, YouTube coupe la connexion (lecture impossible). Le HLS passe.
+            xbmc.log('[wtube] flux direct mweb sans PO Token pour %s, lecture en HLS' % video_id, xbmc.LOGINFO)
+            fmt = None
         if fmt is None:
             # 3) Repli automatique sur le HLS si aucun flux combiné n'est servi
             hls_url = _pick_hls(info)
