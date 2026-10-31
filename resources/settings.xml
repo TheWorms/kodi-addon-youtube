@@ -163,7 +163,7 @@
         </setting>
         <setting id="yt_clients" type="string" label="30288">
           <level>2</level>
-          <default>mweb</default>
+          <default>tv_simply,web_embedded</default>
           <constraints>
             <allowempty>true</allowempty>
           </constraints>

@@ -27,9 +27,16 @@ except ImportError:  # dossier vendor/ absent
 
 
 RUNTIMES = (('deno', 'deno'), ('node', 'node'), ('qjs', 'quickjs'))
-# mweb est la seule identité qui passe le contrôle anti-robot sur Cormoran
-# (test du 31/10/2026, avec moteur JavaScript) ; réglable dans les réglages.
-DEFAULT_CLIENTS = 'mweb'
+# Test du 31/10/2026 sur Cormoran (yt-dlp 2026.10.26, moteur JavaScript) :
+# tv_simply et web_embedded donnent un flux qui se télécharge ; les flux de
+# mweb et android_vr sont coupés faute de « PO Token » ; tv, web, web_safari
+# et ios sont bloqués. Réglable dans les réglages (avancé).
+DEFAULT_CLIENTS = 'tv_simply,web_embedded'
+# Anciennes valeurs par défaut, remplacées automatiquement (un réglage
+# enregistré par Kodi garde sinon l'ancienne valeur pour toujours).
+OLD_DEFAULTS = ('mweb',)
+# Flux directs refusés sans PO Token (paramètre c= de l'URL du flux)
+PO_TOKEN_CLIENTS = ('MWEB', 'ANDROID_VR')
 
 
 def find_js_runtime(profile_dir, configured=''):
@@ -183,14 +190,17 @@ def _pick_progressive(formats, max_height):
         and f.get('acodec') not in (None, 'none')
         and (f.get('protocol') or '').startswith('http')
     ]
+    usable = [f for f in cands if not _needs_po_token(f)]
+    if usable:
+        cands = usable
     ok = [f for f in cands if (f.get('height') or 0) <= max_height] or cands
     return max(ok, key=lambda f: (f.get('height') or 0, f.get('tbr') or 0), default=None)
 
 
 def _needs_po_token(fmt):
-    """Flux direct servi au client mweb : refusé par YouTube sans PO Token."""
+    """Flux direct d'un client (mweb, android_vr) refusé par YouTube sans PO Token."""
     from urllib.parse import parse_qs, urlparse
-    return parse_qs(urlparse(fmt.get('url') or '').query).get('c', [''])[0].upper() == 'MWEB'
+    return parse_qs(urlparse(fmt.get('url') or '').query).get('c', [''])[0].upper() in PO_TOKEN_CLIENTS
 
 
 def _pick_hls(info):
@@ -236,6 +246,8 @@ class Extractor:
         self.max_height = max_height
         self.hls = hls
         self.js_runtime = js_runtime
+        if (clients or '').strip().lower() in OLD_DEFAULTS:
+            clients = DEFAULT_CLIENTS
         self.clients = [c.strip() for c in (clients or '').split(',') if c.strip()]
 
     # --- options ---------------------------------------------------------
