@@ -522,3 +522,23 @@ msgstr "Tout lire à partir d'ici"
 msgctxt "#30297"
 msgid "Play all"
 msgstr "Tout lire"
+
+msgctxt "#30298"
+msgid "Widget and list background"
+msgstr "Fond des widgets et des listes"
+
+msgctxt "#30299"
+msgid "Video image (HD)"
+msgstr "Image de la vidéo (HD)"
+
+msgctxt "#30300"
+msgid "Video thumbnail"
+msgstr "Vignette de la vidéo"
+
+msgctxt "#30301"
+msgid "Wtube fanart"
+msgstr "Fanart Wtube"
+
+msgctxt "#30302"
+msgid "None (skin background)"
+msgstr "Aucun (fond du skin)"

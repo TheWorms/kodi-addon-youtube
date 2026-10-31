@@ -522,3 +522,23 @@ msgstr ""
 msgctxt "#30297"
 msgid "Play all"
 msgstr ""
+
+msgctxt "#30298"
+msgid "Widget and list background"
+msgstr ""
+
+msgctxt "#30299"
+msgid "Video image (HD)"
+msgstr ""
+
+msgctxt "#30300"
+msgid "Video thumbnail"
+msgstr ""
+
+msgctxt "#30301"
+msgid "Wtube fanart"
+msgstr ""
+
+msgctxt "#30302"
+msgid "None (skin background)"
+msgstr ""

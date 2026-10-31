@@ -50,3 +50,24 @@ def video_fanart(video_id):
     """Image 16:9 en 1280x720, en JPEG (le WebP n'est pas lu par tous les
     scripts de skin, ex. le flou d'arrière-plan d'Embuary)."""
     return 'https://i.ytimg.com/vi/%s/maxresdefault.jpg' % video_id
+
+
+def background_art(video_id):
+    """Fond (fanart) d'une vidéo dans les widgets et listes, selon le réglage
+    « widget_fanart » : 0 image HD de la vidéo, 1 vignette, 2 fanart Wtube,
+    3 aucun (fond du skin)."""
+    import os
+    import xbmcaddon
+    addon = xbmcaddon.Addon('plugin.video.wtube')
+    try:
+        mode = int(addon.getSetting('widget_fanart') or 0)
+    except ValueError:
+        mode = 0
+    art = {'landscape': video_fanart(video_id)}
+    if mode == 0:
+        art['fanart'] = video_fanart(video_id)
+    elif mode == 1:
+        art['fanart'] = 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % video_id
+    elif mode == 2:
+        art['fanart'] = os.path.join(addon.getAddonInfo('path'), 'resources', 'fanart.jpg')
+    return art

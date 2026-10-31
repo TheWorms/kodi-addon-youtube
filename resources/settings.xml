@@ -129,6 +129,21 @@
             <heading>30264</heading>
           </control>
         </setting>
+        <setting id="widget_fanart" type="integer" label="30298">
+          <level>0</level>
+          <default>0</default>
+          <constraints>
+            <options>
+              <option label="30299">0</option>
+              <option label="30300">1</option>
+              <option label="30301">2</option>
+              <option label="30302">3</option>
+            </options>
+          </constraints>
+          <control type="list" format="string">
+            <heading>30298</heading>
+          </control>
+        </setting>
         <setting id="hide_shorts" type="boolean" label="30285">
           <level>0</level>
           <default>true</default>

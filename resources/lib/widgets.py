@@ -16,7 +16,7 @@ import xbmcaddon
 import xbmcgui
 
 from . import feed
-from .utils import video_fanart
+from .utils import background_art
 
 ADDON_FANART = os.path.join(xbmcaddon.Addon('plugin.video.wtube').getAddonInfo('path'), 'resources', 'fanart.jpg')
 
@@ -49,8 +49,7 @@ def video_li(e, url_fn, L, resume=None, favorite=False, label_channel=True):
     if label_channel and e.get('channel'):
         li.setLabel2(e['channel'])
     thumb = e.get('thumb') or 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % vid
-    li.setArt({'thumb': thumb, 'icon': thumb, 'poster': thumb,
-               'fanart': video_fanart(vid), 'landscape': video_fanart(vid)})
+    li.setArt(dict(background_art(vid), thumb=thumb, icon=thumb, poster=thumb))
     tag = li.getVideoInfoTag()
     tag.setMediaType('video')
     tag.setTitle(title)

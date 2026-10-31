@@ -4,7 +4,7 @@ import xbmc
 import xbmcaddon
 import xbmcgui
 
-from .utils import fmt_count, video_fanart
+from .utils import background_art, fmt_count
 
 
 def _kodi_major():
@@ -58,7 +58,7 @@ def make_item(e, url_fn, subscribed=(), in_history=False):
     if e.get('thumb'):
         li.setArt({'thumb': e['thumb'], 'icon': e['thumb']})
     if kind == 'video' and e.get('id'):
-        li.setArt({'fanart': video_fanart(e['id']), 'landscape': video_fanart(e['id'])})
+        li.setArt(background_art(e['id']))
 
     ctx = []
     cid = e.get('channel_id') or ''
