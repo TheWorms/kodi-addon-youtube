@@ -486,3 +486,31 @@ msgstr ""
 msgctxt "#30288"
 msgid "YouTube player clients (advanced, comma-separated)"
 msgstr ""
+
+msgctxt "#30289"
+msgid "Play the next video"
+msgstr ""
+
+msgctxt "#30290"
+msgid "No"
+msgstr ""
+
+msgctxt "#30291"
+msgid "Ask"
+msgstr ""
+
+msgctxt "#30292"
+msgid "Without asking"
+msgstr ""
+
+msgctxt "#30293"
+msgid "Next video"
+msgstr ""
+
+msgctxt "#30294"
+msgid "Play"
+msgstr ""
+
+msgctxt "#30295"
+msgid "Stop"
+msgstr ""

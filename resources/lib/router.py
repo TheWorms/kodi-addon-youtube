@@ -8,7 +8,7 @@ import xbmcgui
 import xbmcplugin
 import xbmcvfs
 
-from . import feed, hlsproxy, ui, widgets
+from . import feed, hlsproxy, ui, upnext, widgets
 from .extractor import DEFAULT_CLIENTS, Extractor, ExtractorError, find_js_runtime
 from .storage import Storage
 from .ui import L
@@ -17,6 +17,17 @@ from .utils import parse_target
 ADDON_NAME = 'Wtube'
 RESUME_MIN = 15          # en dessous, on repart du début
 RESUME_END_MARGIN = 30   # dans les 30 dernières secondes : vidéo considérée comme vue
+NEXT_ASK_TIMEOUT = 15    # secondes avant que la question « vidéo suivante » se ferme (= arrêt)
+
+
+class _EndWatcher(xbmc.Player):
+    """Distingue la fin naturelle d'une vidéo d'un arrêt par l'utilisateur."""
+    def __init__(self):
+        super().__init__()
+        self.ended = False
+
+    def onPlayBackEnded(self):
+        self.ended = True
 
 
 def fmt_time(seconds):
@@ -363,7 +374,7 @@ class Router:
         self._end(ok=False)
 
     # lecture -------------------------------------------------------------
-    def _resume_choice(self, video_id):
+    def _resume_choice(self, video_id, ask=True):
         """Position de départ (secondes), 0 = début, None = lecture annulée."""
         saved = self.db.get_resume(video_id)
         try:  # lecture texte : getSettingInt peu fiable sur les listes (cf. Radio)
@@ -377,6 +388,8 @@ class Router:
             return 0
         if mode == 1:
             return position
+        if not ask:
+            return 0  # vidéo enchaînée : on ne bloque pas l'enchaînement sur une question
         choice = xbmcgui.Dialog().contextmenu([L(30242) % fmt_time(position), L(30243)])
         if choice < 0:
             return None
@@ -384,10 +397,14 @@ class Router:
 
     def a_play(self):
         video_id = self.params['id']
+        chained = self.params.get('chain') == '1'
+        if not chained and not upnext.is_fresh_for(upnext.load(self._profile), video_id):
+            # Lancée depuis une liste classique ou un widget : on fige la suite de la liste.
+            upnext.save(self._profile, video_id, upnext.capture_from_container(video_id))
         if self.params.get('kodiresume') == '1':
             start = 0  # Kodi a déjà posé la question et applique lui-même la reprise
         else:
-            start = self._resume_choice(video_id)  # demandé avant l'extraction : réponse immédiate
+            start = self._resume_choice(video_id, ask=not chained)  # avant l'extraction : réponse immédiate
         if start is None:
             xbmcplugin.setResolvedUrl(self.handle, False, xbmcgui.ListItem())
             return
@@ -421,21 +438,46 @@ class Router:
             return
         kick = (stream.manifest == 'hls' and not start
                 and self.addon.getSetting('audio_kick') != 'false')
-        self._watch(video_id, [] if relayed else segments, kick)
+        if self._watch(video_id, [] if relayed else segments, kick):
+            self._play_next(video_id)
+
+    def _play_next(self, video_id):
+        """Fin naturelle de la vidéo : enchaîne la suivante de la liste."""
+        try:
+            mode = int(self.addon.getSetting('autoplay_next') or 0)  # 0 non, 1 demander, 2 sans demander
+        except ValueError:
+            mode = 0
+        if not mode:
+            return
+        monitor, player = xbmc.Monitor(), xbmc.Player()
+        if monitor.waitForAbort(1.5) or player.isPlaying():
+            return  # une file d'attente Kodi a pris le relais
+        data = upnext.load(self._profile)
+        if not data or data.get('current') != video_id or not data.get('next'):
+            return
+        nxt, rest = data['next'][0], data['next'][1:]
+        if mode == 1:
+            title = nxt.get('title') or nxt['id']
+            if not xbmcgui.Dialog().yesno(L(30293), '[B]%s[/B]' % title, nolabel=L(30295),
+                                          yeslabel=L(30294), autoclose=NEXT_ASK_TIMEOUT * 1000):
+                return
+        upnext.save(self._profile, nxt['id'], rest)
+        log('enchaînement : %s' % nxt['id'])
+        xbmc.executebuiltin('PlayMedia(%s)' % self.url(action='play', id=nxt['id'], chain='1'))
 
     def _watch(self, video_id, skip_segments, kick_audio):
         """Suit la lecture : position de reprise, saut SponsorBlock (ancienne
         méthode) et relance du son au démarrage des flux HLS."""
-        monitor, player = xbmc.Monitor(), xbmc.Player()
+        monitor, player = xbmc.Monitor(), _EndWatcher()
         waited = 0.0
         while not player.isPlayingVideo():  # attendre le démarrage de la lecture
             if monitor.waitForAbort(0.5) or waited > 30:
-                return
+                return False
             waited += 0.5
         try:
             playing_file = player.getPlayingFile()
         except RuntimeError:
-            return
+            return False
         position = total = 0.0
         saved_at = 0.0
         done = set()
@@ -463,6 +505,10 @@ class Router:
             if monitor.waitForAbort(0.5):
                 break
         self._save_resume(video_id, position, total)
+        if not player.ended and not monitor.abortRequested():
+            monitor.waitForAbort(0.5)  # laisse arriver le rappel de fin de lecture
+        # Fin naturelle : rappel Kodi, ou position arrivée au bout (repli)
+        return player.ended or bool(total and position >= total - 3)
 
     def _save_resume(self, video_id, position, total):
         if total and position > total - RESUME_END_MARGIN:

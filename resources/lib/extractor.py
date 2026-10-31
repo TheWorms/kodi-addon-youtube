@@ -299,8 +299,21 @@ class Extractor:
         else:
             url = 'https://www.youtube.com/channel/%s' % channel
         end = page * size
-        info, entries = self._flat_info('%s/%s' % (url, tab), end - size + 1, end)
-        return _channel_meta(info), entries
+        # Une chaîne sans onglet « Vidéos » (que des directs ou des Shorts) :
+        # on se rabat sur les autres onglets plutôt que d'échouer.
+        tabs = (tab, 'streams', 'shorts') if tab == 'videos' else (tab,)
+        for t in tabs:
+            try:
+                info, entries = self._flat_info('%s/%s' % (url, t), end - size + 1, end)
+                return _channel_meta(info), entries
+            except ExtractorError as exc:
+                if 'does not have a' not in str(exc):
+                    raise
+        try:  # aucun onglet utilisable : au moins l'en-tête de la chaîne
+            info, _ = self._flat_info(url, 1, 1)
+            return _channel_meta(info), []
+        except ExtractorError:
+            return {}, []
 
     def channel_videos(self, channel, page=1, size=20):
         return self.channel_page(channel, page, size, 'videos')[1]

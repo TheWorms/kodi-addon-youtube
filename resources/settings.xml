@@ -47,6 +47,20 @@
             <heading>30244</heading>
           </control>
         </setting>
+        <setting id="autoplay_next" type="integer" label="30289">
+          <level>0</level>
+          <default>1</default>
+          <constraints>
+            <options>
+              <option label="30290">0</option>
+              <option label="30291">1</option>
+              <option label="30292">2</option>
+            </options>
+          </constraints>
+          <control type="list" format="string">
+            <heading>30289</heading>
+          </control>
+        </setting>
         <setting id="audio_kick" type="boolean" label="30248">
           <level>0</level>
           <default>true</default>

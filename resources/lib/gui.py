@@ -21,7 +21,7 @@ import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
-from . import feed, widgets
+from . import feed, upnext, widgets
 from .extractor import DEFAULT_CLIENTS, Extractor, ExtractorError, find_js_runtime
 from .storage import Storage
 from .utils import fmt_count, parse_target
@@ -137,7 +137,7 @@ def video_item(e, label2=None, new=False):
     li = xbmcgui.ListItem(e.get('title') or '')
     li.setLabel2(label2 if label2 is not None else '  ·  '.join(x for x in (channel, age) if x))
     li.setArt({'thumb': e.get('thumb') or ''})
-    for key, value in (('kind', 'video'), ('id', e.get('id') or ''), ('channel', channel),
+    for key, value in (('kind', 'video'), ('ytid', e.get('id') or ''), ('channel', channel),
                        ('channel_id', e.get('channel_id') or ''), ('duration', fmt_duration(e.get('duration'))),
                        ('views', views_text(e.get('views'))), ('age', age),
                        ('plot', e.get('description') or ''), ('new', '1' if new else ''),
@@ -152,7 +152,7 @@ def channel_item(e):
     li.setLabel2(L(30220) % fmt_count(e['subs']) if e.get('subs') else '')
     li.setArt({'thumb': e.get('thumb') or ''})
     li.setProperty('kind', 'channel')
-    li.setProperty('id', e.get('channel_id') or e.get('id') or e.get('url') or '')
+    li.setProperty('ytid', e.get('channel_id') or e.get('id') or e.get('url') or '')
     li.setProperty('initials', initials(name))
     li.setProperty('color', color_for(name))
     return li
@@ -163,7 +163,7 @@ def playlist_item(e):
     li.setLabel2(e.get('channel') or L(30234))
     li.setArt({'thumb': e.get('thumb') or ''})
     li.setProperty('kind', 'playlist')
-    li.setProperty('id', e.get('id') or '')
+    li.setProperty('ytid', e.get('id') or '')
     li.setProperty('count', str(e['count']) if e.get('count') else '')
     return li
 
@@ -535,11 +535,11 @@ class MainWindow(xbmcgui.WindowXML):
         if kind == 'more':
             self._load_more(cid)
         elif kind == 'video':
-            self._play(li.getProperty('id'), li.getLabel(), li.getArt('thumb'))
+            self._play(li.getProperty('ytid'), li.getLabel(), li.getArt('thumb'))
         elif kind == 'channel':
-            self.open_channel(li.getProperty('id'), li.getLabel(), li.getArt('thumb'))
+            self.open_channel(li.getProperty('ytid'), li.getLabel(), li.getArt('thumb'))
         elif kind == 'playlist':
-            self.open_playlist(li.getProperty('id'), li.getLabel())
+            self.open_playlist(li.getProperty('ytid'), li.getLabel())
 
     def _load_more(self, cid):
         if cid in RESULTS.values():
@@ -551,9 +551,32 @@ class MainWindow(xbmcgui.WindowXML):
         elif cid == HISTORY_GRID:
             self._run(self._load_history, self.history_page + 1)
 
+    def _following(self, video_id):
+        """Vidéos qui suivent `video_id` dans la liste d'où elle est lancée."""
+        fid = self._focus_id()
+        cid = fid if fid in ITEM_CONTAINERS else (ROW_NEW if fid in (BTN_PLAY, BTN_CHANNEL, BTN_SUB) else 0)
+        c = self._ctrl(cid) if cid else None
+        if c is None:
+            return []
+        out, found = [], False
+        try:
+            for i in range(c.size()):
+                li = c.getListItem(i)
+                if li.getProperty('kind') != 'video':
+                    continue
+                vid = li.getProperty('ytid')
+                if found and vid and vid != video_id:
+                    out.append({'id': vid, 'title': li.getLabel(), 'thumb': li.getArt('thumb')})
+                elif vid == video_id:
+                    found = True
+        except RuntimeError:
+            return []
+        return out
+
     def _play(self, video_id, title='', thumb=''):
         if not video_id:
             return
+        upnext.save(PROFILE, video_id, self._following(video_id), from_gui=True)
         item = xbmcgui.ListItem(title or video_id)
         item.setArt({'thumb': thumb or '', 'icon': thumb or ''})
         item.getVideoInfoTag().setTitle(title or video_id)
@@ -567,7 +590,7 @@ class MainWindow(xbmcgui.WindowXML):
         kind = li.getProperty('kind')
         options = []
         if kind == 'video':
-            vid, title, thumb = li.getProperty('id'), li.getLabel(), li.getArt('thumb')
+            vid, title, thumb = li.getProperty('ytid'), li.getLabel(), li.getArt('thumb')
             cid, cname = li.getProperty('channel_id'), li.getProperty('channel')
             options.append((L(30207), lambda: self._play(vid, title, thumb)))
             options.append((L(30251), lambda: self._queue(vid, title, thumb, play_next=True)))
@@ -585,11 +608,11 @@ class MainWindow(xbmcgui.WindowXML):
             if fid in (ROW_RECENT, HISTORY_GRID):
                 options.append((L(30023), lambda: self._remove_history(vid)))
         elif kind == 'playlist':
-            pid, title = li.getProperty('id'), li.getLabel()
+            pid, title = li.getProperty('ytid'), li.getLabel()
             options.append((L(30256), lambda: self.open_playlist(pid, title)))
             options.append((L(30257), lambda: self._run(self._play_playlist, pid)))
         elif kind == 'channel':
-            cid = li.getProperty('id')
+            cid = li.getProperty('ytid')
             options.append((L(30022), lambda: self.open_channel(cid, li.getLabel(), li.getArt('thumb'))))
             if cid.startswith('UC'):
                 options.append((self._sub_label(cid, verb=True),
@@ -648,7 +671,7 @@ class MainWindow(xbmcgui.WindowXML):
             db.close()
 
     def _toggle_favorite(self, li):
-        vid = li.getProperty('id')
+        vid = li.getProperty('ytid')
         db = self._db()
         try:
             if vid in db.favorite_ids():
@@ -729,7 +752,7 @@ class MainWindow(xbmcgui.WindowXML):
     # --- accueil ----------------------------------------------------------
     def _set_hero(self, li):
         p = li.getProperty
-        vid = p('id')
+        vid = p('ytid')
         self.hero = {'id': vid, 'title': li.getLabel(), 'channel': p('channel'),
                      'channel_id': p('channel_id'), 'thumb_small': li.getArt('thumb')}
         if p('new'):
@@ -919,7 +942,7 @@ class MainWindow(xbmcgui.WindowXML):
             li.setLabel2(L(30237) % n if n else '')
             li.setArt({'thumb': s.get('thumb') or ''})
             li.setProperty('kind', 'channel')
-            li.setProperty('id', s['channel_id'])
+            li.setProperty('ytid', s['channel_id'])
             li.setProperty('initials', initials(s['name']))
             li.setProperty('color', color_for(s['name']))
             items.append(li)
