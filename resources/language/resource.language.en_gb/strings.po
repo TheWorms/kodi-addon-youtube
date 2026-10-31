@@ -542,3 +542,11 @@ msgstr ""
 msgctxt "#30302"
 msgid "None (skin background)"
 msgstr ""
+
+msgctxt "#30307"
+msgid "Preload the next video (instant start)"
+msgstr ""
+
+msgctxt "#30308"
+msgid "Fade between chained videos (picture and sound)"
+msgstr ""

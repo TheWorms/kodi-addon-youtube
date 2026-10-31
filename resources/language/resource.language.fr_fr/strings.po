@@ -542,3 +542,11 @@ msgstr "Fanart Wtube"
 msgctxt "#30302"
 msgid "None (skin background)"
 msgstr "Aucun (fond du skin)"
+
+msgctxt "#30307"
+msgid "Preload the next video (instant start)"
+msgstr "Précharger la vidéo suivante (démarrage immédiat)"
+
+msgctxt "#30308"
+msgid "Fade between chained videos (picture and sound)"
+msgstr "Fondu entre les vidéos enchaînées (image et son)"

@@ -3,7 +3,7 @@
 # Wtube — YouTube pour Kodi
 
 <!-- version:auto -->
-**Version : 0.6.10**
+**Version : 0.6.11**
 <!-- /version:auto -->
 
 Module Kodi pour regarder **YouTube sans compte et sans clé d'API Google**, avec une interface
@@ -61,7 +61,8 @@ première fois qu'une vidéo est bloquée.
 - **Reprise de lecture** — « Reprendre à … / Lire depuis le début » au lancement (ou toujours /
   jamais), barres de progression sur les vignettes.
 - **Enchaînement** — à la fin d'une vidéo, la suivante de la liste (écran, widget, chaîne,
-  playlist) démarre, avec ou sans question (réglable).
+  playlist) démarre, avec ou sans question (réglable). Vidéo suivante préchargée pendant la fin
+  de la précédente (démarrage immédiat) et fondu au noir de l'image et du son (réglables).
 - **Tout lire** — depuis le menu d'une vidéo : toute la liste ou à partir de cette vidéo
   (chaîne, favoris, recherche…), Suivant / Précédent pour passer d'une vidéo à l'autre.
 - **Menu contextuel** — lire ensuite, file d'attente, favoris, aller à la chaîne,

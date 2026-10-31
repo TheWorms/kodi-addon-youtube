@@ -61,6 +61,22 @@
             <heading>30289</heading>
           </control>
         </setting>
+        <setting id="preload_next" type="boolean" label="30307">
+          <level>0</level>
+          <default>true</default>
+          <dependencies>
+            <dependency type="enable" setting="autoplay_next" operator="!is">0</dependency>
+          </dependencies>
+          <control type="toggle"/>
+        </setting>
+        <setting id="fade_transition" type="boolean" label="30308">
+          <level>0</level>
+          <default>true</default>
+          <dependencies>
+            <dependency type="enable" setting="autoplay_next" operator="!is">0</dependency>
+          </dependencies>
+          <control type="toggle"/>
+        </setting>
         <setting id="audio_kick" type="boolean" label="30248">
           <level>0</level>
           <default>true</default>

@@ -8,7 +8,9 @@ import xbmcgui
 import xbmcplugin
 import xbmcvfs
 
-from . import feed, hlsproxy, ui, upnext, widgets
+import threading
+
+from . import feed, hlsproxy, streamcache, ui, upnext, widgets
 from .extractor import DEFAULT_CLIENTS, Extractor, ExtractorError, find_js_runtime
 from .storage import Storage
 from .ui import L
@@ -18,6 +20,57 @@ ADDON_NAME = 'Wtube'
 RESUME_MIN = 15          # en dessous, on repart du début
 RESUME_END_MARGIN = 30   # dans les 30 dernières secondes : vidéo considérée comme vue
 NEXT_ASK_TIMEOUT = 15    # secondes avant que la question « vidéo suivante » se ferme (= arrêt)
+PRELOAD_BEFORE = 90      # secondes avant la fin : résolution de la vidéo suivante
+FADE_BEFORE = 1.3        # secondes avant la fin : début du fondu au noir
+
+
+class _NextHelper:
+    """Préchargement de la vidéo suivante et fondu de fin, pendant la lecture."""
+
+    def __init__(self, router, video_id, mode):
+        self.router, self.video_id, self.mode = router, video_id, mode
+        data = upnext.load(router._profile)
+        self.next = (data['next'][0] if data and data.get('current') == video_id and data.get('next')
+                     else None)
+        self.preload_on = router.addon.getSetting('preload_next') != 'false'
+        self.fade_on = router.addon.getSetting('fade_transition') != 'false'
+        self.preload = None
+        self.fade = None
+
+    def tick(self, position, total):
+        if not self.next or not total:
+            return
+        remaining = total - position
+        if self.preload_on and self.preload is None and remaining <= PRELOAD_BEFORE:
+            self.preload = threading.Thread(target=self._preload, daemon=True)
+            self.preload.start()
+        if self.fade_on and self.mode == 2 and self.fade is None and 0 < remaining <= FADE_BEFORE:
+            from .transition import Fade
+            self.fade = Fade()
+            self.fade.out(FADE_BEFORE)
+
+    def _preload(self):
+        vid = self.next['id']
+        try:
+            streamcache.save(self.router._profile, vid, self.router.ex.resolve(vid))
+            log('vidéo suivante préchargée : %s' % vid)
+        except Exception as exc:  # la lecture suivante refera l'extraction elle-même
+            log('préchargement de %s impossible : %s' % (vid, str(exc)[:120]), xbmc.LOGINFO)
+
+    def wait_preload(self, seconds=15):
+        if self.preload is not None:
+            self.preload.join(seconds)
+
+    def start_fade(self):
+        if self.fade_on and self.fade is None:
+            from .transition import Fade
+            self.fade = Fade()
+            self.fade.out(0.6)
+
+    def cancel(self):
+        if self.fade is not None:
+            self.fade.cancel()
+            self.fade = None
 
 
 class _EndWatcher(xbmc.Player):
@@ -408,8 +461,11 @@ class Router:
         if start is None:
             xbmcplugin.setResolvedUrl(self.handle, False, xbmcgui.ListItem())
             return
+        stream = streamcache.take(self._profile, video_id) if chained else None
+        if stream is not None:
+            log('%s : flux préchargé, démarrage immédiat' % video_id)
         try:
-            stream = self.ex.resolve(video_id)
+            stream = stream or self.ex.resolve(video_id)
         except ExtractorError:
             xbmcplugin.setResolvedUrl(self.handle, False, xbmcgui.ListItem())
             raise
@@ -438,17 +494,25 @@ class Router:
             return
         kick = (stream.manifest == 'hls' and not start
                 and self.addon.getSetting('audio_kick') != 'false')
-        if self._watch(video_id, [] if relayed else segments, kick):
-            self._play_next(video_id)
-
-    def _play_next(self, video_id):
-        """Fin naturelle de la vidéo : enchaîne la suivante de la liste."""
+        mode = self._autoplay_mode()
+        helper = _NextHelper(self, video_id, mode) if mode else None
         try:
-            mode = int(self.addon.getSetting('autoplay_next') or 0)  # 0 non, 1 demander, 2 sans demander
+            ended = self._watch(video_id, [] if relayed else segments, kick,
+                                on_tick=helper.tick if helper else None)
+            if ended and helper:
+                self._play_next(video_id, helper)
+        finally:
+            if helper:
+                helper.cancel()  # image et volume toujours rétablis
+
+    def _autoplay_mode(self):
+        try:
+            return int(self.addon.getSetting('autoplay_next') or 0)  # 0 non, 1 demander, 2 sans demander
         except ValueError:
-            mode = 0
-        if not mode:
-            return
+            return 0
+
+    def _play_next(self, video_id, helper):
+        """Fin naturelle de la vidéo : enchaîne la suivante de la liste."""
         monitor, player = xbmc.Monitor(), xbmc.Player()
         if monitor.waitForAbort(1.5) or player.isPlaying():
             return  # une file d'attente Kodi a pris le relais
@@ -456,16 +520,31 @@ class Router:
         if not data or data.get('current') != video_id or not data.get('next'):
             return
         nxt, rest = data['next'][0], data['next'][1:]
-        if mode == 1:
+        if helper.mode == 1:
             title = nxt.get('title') or nxt['id']
             if not xbmcgui.Dialog().yesno(L(30293), '[B]%s[/B]' % title, nolabel=L(30295),
                                           yeslabel=L(30294), autoclose=NEXT_ASK_TIMEOUT * 1000):
                 return
+            helper.start_fade()
+        helper.wait_preload()
         upnext.save(self._profile, nxt['id'], rest)
         log('enchaînement : %s' % nxt['id'])
         xbmc.executebuiltin('PlayMedia(%s)' % self.url(action='play', id=nxt['id'], chain='1'))
+        if helper.fade is not None:
+            # Le voile reste noir jusqu'au démarrage effectif de la suivante.
+            waited = 0.0
+            while waited < 40 and not monitor.abortRequested():
+                try:
+                    if player.isPlayingVideo() and player.getTime() > 0.3:
+                        break
+                except RuntimeError:
+                    pass
+                monitor.waitForAbort(0.25)
+                waited += 0.25
+            helper.fade.into()
+            helper.fade = None
 
-    def _watch(self, video_id, skip_segments, kick_audio):
+    def _watch(self, video_id, skip_segments, kick_audio, on_tick=None):
         """Suit la lecture : position de reprise, saut SponsorBlock (ancienne
         méthode) et relance du son au démarrage des flux HLS."""
         monitor, player = xbmc.Monitor(), _EndWatcher()
@@ -502,6 +581,8 @@ class Router:
             if position - saved_at >= 10 or position < saved_at:
                 self._save_resume(video_id, position, total)
                 saved_at = position
+            if on_tick is not None:
+                on_tick(position, total)
             if monitor.waitForAbort(0.5):
                 break
         self._save_resume(video_id, position, total)
