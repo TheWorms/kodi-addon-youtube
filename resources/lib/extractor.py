@@ -31,10 +31,10 @@ RUNTIMES = (('deno', 'deno'), ('node', 'node'), ('qjs', 'quickjs'))
 # tv_simply et web_embedded donnent un flux qui se télécharge ; les flux de
 # mweb et android_vr sont coupés faute de « PO Token » ; tv, web, web_safari
 # et ios sont bloqués. Réglable dans les réglages (avancé).
-DEFAULT_CLIENTS = 'tv_simply,web_embedded'
+DEFAULT_CLIENTS = 'tv_simply,web_embedded,mweb'  # essayées une par une, flux testé
 # Anciennes valeurs par défaut, remplacées automatiquement (un réglage
 # enregistré par Kodi garde sinon l'ancienne valeur pour toujours).
-OLD_DEFAULTS = ('mweb',)
+OLD_DEFAULTS = ('mweb', 'tv_simply,web_embedded')
 # Flux directs refusés sans PO Token (paramètre c= de l'URL du flux)
 PO_TOKEN_CLIENTS = ('MWEB', 'ANDROID_VR')
 
@@ -177,12 +177,9 @@ def _channel_meta(info):
     }
 
 
-def _pick_progressive(formats, max_height):
-    """Meilleur flux HTTP audio+vidéo combiné <= max_height.
-
-    Sur YouTube ces flux combinés s'arrêtent en général à 720p ;
-    au-delà, audio et vidéo sont séparés (voir README/TODO : DASH).
-    """
+def _progressive_candidates(formats, max_height):
+    """Flux combinés audio+vidéo, du meilleur au moins bon ; ceux qui exigent
+    un PO Token passent en dernier."""
     cands = [
         f for f in formats
         if f.get('url')
@@ -190,11 +187,20 @@ def _pick_progressive(formats, max_height):
         and f.get('acodec') not in (None, 'none')
         and (f.get('protocol') or '').startswith('http')
     ]
-    usable = [f for f in cands if not _needs_po_token(f)]
-    if usable:
-        cands = usable
-    ok = [f for f in cands if (f.get('height') or 0) <= max_height] or cands
-    return max(ok, key=lambda f: (f.get('height') or 0, f.get('tbr') or 0), default=None)
+    fit = [f for f in cands if (f.get('height') or 0) <= max_height] or cands
+    return sorted(fit, key=lambda f: (_needs_po_token(f), -(f.get('height') or 0), -(f.get('tbr') or 0)))
+
+
+def _probe(url, headers, timeout=5):
+    """Le flux se télécharge-t-il vraiment ? (YouTube coupe la connexion des
+    flux refusés dès les premiers octets)."""
+    import urllib.request
+    req = urllib.request.Request(url, headers=dict(headers, Range='bytes=0-4095'))
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status in (200, 206) and len(resp.read(4096)) > 0
+    except Exception:  # erreur HTTP, connexion coupée, délai dépassé
+        return False
 
 
 def _needs_po_token(fmt):
@@ -350,11 +356,43 @@ class Extractor:
 
     # --- lecture ---------------------------------------------------------
     def resolve(self, video_id):
-        """Résout une vidéo en flux jouable par Kodi."""
-        info = self._extract(
-            'https://www.youtube.com/watch?v=%s' % video_id,
-            format='best/bestvideo*+bestaudio',
-        )
+        """Résout une vidéo en flux jouable par Kodi.
+
+        YouTube refuse désormais au hasard les flux de certaines identités de
+        lecteur (connexion coupée faute de « PO Token »), et cela varie d'une
+        vidéo à l'autre. Chaque identité est donc essayée à son tour, et le flux
+        retenu est d'abord testé (quelques Ko) avant d'être confié à Kodi.
+        """
+        url = 'https://www.youtube.com/watch?v=%s' % video_id
+        last_info, last_error = None, None
+        for client in (self.clients or [None]):
+            extra = {'format': 'best/bestvideo*+bestaudio'}
+            if client:
+                extra['extractor_args'] = {'youtube': {'player_client': [client]}}
+            try:
+                info = self._extract(url, **extra)
+            except ExtractorError as exc:
+                xbmc.log('[wtube] %s : identité %s refusée (%s)' % (video_id, client, str(exc)[:120]), xbmc.LOGINFO)
+                last_error = exc
+                continue
+            last_info = info
+            stream = self._stream_from(info, video_id, probe=True)
+            if stream is not None:
+                if client:
+                    xbmc.log('[wtube] %s : lecture via %s' % (video_id, client), xbmc.LOGINFO)
+                return stream
+            xbmc.log('[wtube] %s : aucun flux utilisable via %s' % (video_id, client), xbmc.LOGINFO)
+        if last_info is not None:
+            stream = self._stream_from(last_info, video_id, probe=False)  # dernier recours
+            if stream is not None:
+                return stream
+            xbmc.log('[wtube] formats reçus pour %s : %s' % (video_id, _summary(last_info.get('formats') or [])),
+                     xbmc.LOGWARNING)
+            raise ExtractorError('Aucun format lisible pour %s' % video_id)
+        raise last_error or ExtractorError('Aucun format lisible pour %s' % video_id)
+
+    def _stream_from(self, info, video_id, probe):
+        """Stream jouable depuis une extraction, ou None."""
         formats = info.get('formats') or []
         base = dict(
             title=info.get('title') or video_id,
@@ -370,33 +408,34 @@ class Extractor:
         )
         ua = (info.get('http_headers') or {}).get('User-Agent', '')
 
-        # 1) Direct / HLS adaptatif (expérimental, ou obligatoire pour un live)
-        if self.hls or info.get('is_live'):
+        def hls_stream():
             hls_url = _pick_hls(info)
-            if hls_url:
-                headers = {'User-Agent': ua} if ua else {}
-                return Stream(url=hls_url, manifest='hls', headers=headers,
-                              mime='application/vnd.apple.mpegurl', **base)
+            if not hls_url:
+                return None
+            headers = {'User-Agent': ua} if ua else {}
+            return Stream(url=hls_url, manifest='hls', headers=headers,
+                          mime='application/vnd.apple.mpegurl', **base)
 
-        # 2) Flux progressif audio+vidéo (fiable, plafonné ~720p)
-        fmt = _pick_progressive(formats, self.max_height)
-        if fmt is not None and _needs_po_token(fmt) and _pick_hls(info):
-            # Les flux directs du client mweb exigent désormais un « PO Token » :
-            # sans lui, YouTube coupe la connexion (lecture impossible). Le HLS passe.
-            xbmc.log('[wtube] flux direct mweb sans PO Token pour %s, lecture en HLS' % video_id, xbmc.LOGINFO)
-            fmt = None
-        if fmt is None:
-            # 3) Repli automatique sur le HLS si aucun flux combiné n'est servi
-            hls_url = _pick_hls(info)
-            if hls_url:
-                xbmc.log('[wtube] pas de flux progressif pour %s, repli HLS' % video_id, xbmc.LOGINFO)
-                headers = {'User-Agent': ua} if ua else {}
-                return Stream(url=hls_url, manifest='hls', headers=headers,
-                              mime='application/vnd.apple.mpegurl', **base)
-            xbmc.log('[wtube] formats reçus pour %s : %s' % (video_id, _summary(formats)), xbmc.LOGWARNING)
-            raise ExtractorError('Aucun format lisible pour %s' % video_id)
-        headers = dict(fmt.get('http_headers') or info.get('http_headers') or {})
-        headers = {k: v for k, v in headers.items() if k in ('User-Agent', 'Referer')}
-        ext = fmt.get('ext') or 'mp4'
-        return Stream(url=fmt['url'], headers=headers,
-                      mime='video/webm' if ext == 'webm' else 'video/mp4', **base)
+        # 1) HLS adaptatif (réglage, ou obligatoire pour un direct)
+        if self.hls or info.get('is_live'):
+            stream = hls_stream()
+            if stream is not None:
+                return stream
+
+        # 2) Flux progressif audio+vidéo (plafonné ~720p), testé avant usage
+        for fmt in _progressive_candidates(formats, self.max_height):
+            headers = dict(fmt.get('http_headers') or info.get('http_headers') or {})
+            headers = {k: v for k, v in headers.items() if k in ('User-Agent', 'Referer')}
+            if probe and not _probe(fmt['url'], headers):
+                xbmc.log('[wtube] %s : flux itag %s refusé par YouTube' % (video_id, fmt.get('format_id')),
+                         xbmc.LOGINFO)
+                continue
+            ext = fmt.get('ext') or 'mp4'
+            return Stream(url=fmt['url'], headers=headers,
+                          mime='video/webm' if ext == 'webm' else 'video/mp4', **base)
+
+        # 3) Repli sur le HLS
+        stream = hls_stream()
+        if stream is not None:
+            xbmc.log('[wtube] pas de flux progressif utilisable pour %s, repli HLS' % video_id, xbmc.LOGINFO)
+        return stream
