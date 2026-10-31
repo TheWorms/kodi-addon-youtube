@@ -132,6 +132,16 @@
             <popup>false</popup>
           </control>
         </setting>
+        <setting id="yt_clients" type="string" label="30288">
+          <level>2</level>
+          <default>mweb</default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="edit" format="string">
+            <heading>30288</heading>
+          </control>
+        </setting>
         <setting id="cookies_file" type="path" label="30106">
           <level>0</level>
           <default></default>

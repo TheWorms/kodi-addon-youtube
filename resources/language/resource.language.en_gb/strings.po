@@ -482,3 +482,7 @@ msgstr ""
 msgctxt "#30287"
 msgid "The “JavaScript engine” add-on is not installed. Install it from your repository?"
 msgstr ""
+
+msgctxt "#30288"
+msgid "YouTube player clients (advanced, comma-separated)"
+msgstr ""

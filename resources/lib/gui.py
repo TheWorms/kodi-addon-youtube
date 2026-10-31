@@ -22,7 +22,7 @@ import xbmcgui
 import xbmcvfs
 
 from . import feed, widgets
-from .extractor import Extractor, ExtractorError, find_js_runtime
+from .extractor import DEFAULT_CLIENTS, Extractor, ExtractorError, find_js_runtime
 from .storage import Storage
 from .utils import fmt_count, parse_target
 
@@ -229,6 +229,7 @@ class MainWindow(xbmcgui.WindowXML):
                 max_height=setting_int('max_height', 1080),
                 hls=setting_int('playback_mode', 0) == 1,
                 js_runtime=find_js_runtime(PROFILE, xbmcaddon.Addon(ADDON_ID).getSetting('js_runtime')),
+                clients=xbmcaddon.Addon(ADDON_ID).getSetting('yt_clients') or DEFAULT_CLIENTS,
             )
         return self._ex
 

@@ -9,7 +9,7 @@ import xbmcplugin
 import xbmcvfs
 
 from . import feed, hlsproxy, ui, widgets
-from .extractor import Extractor, ExtractorError, find_js_runtime
+from .extractor import DEFAULT_CLIENTS, Extractor, ExtractorError, find_js_runtime
 from .storage import Storage
 from .ui import L
 from .utils import parse_target
@@ -54,6 +54,7 @@ class Router:
                 max_height=self.addon.getSettingInt('max_height') or 1080,
                 hls=self.addon.getSettingInt('playback_mode') == 1,
                 js_runtime=find_js_runtime(self._profile, self.addon.getSetting('js_runtime')),
+                clients=self.addon.getSetting('yt_clients') or DEFAULT_CLIENTS,
             )
             log('moteur JavaScript : %s' % (self._extractor.js_runtime and ' '.join(self._extractor.js_runtime)
                                              or 'aucun (YouTube risque de bloquer la lecture)'))

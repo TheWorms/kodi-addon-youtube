@@ -482,3 +482,7 @@ msgstr "Rafraîchir les abonnements toutes les (minutes)"
 msgctxt "#30287"
 msgid "The “JavaScript engine” add-on is not installed. Install it from your repository?"
 msgstr "L'addon « Moteur JavaScript » n'est pas installé. L'installer depuis ton dépôt ?"
+
+msgctxt "#30288"
+msgid "YouTube player clients (advanced, comma-separated)"
+msgstr "Identités de lecteur YouTube (avancé, séparées par des virgules)"

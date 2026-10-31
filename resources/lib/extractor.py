@@ -27,6 +27,9 @@ except ImportError:  # dossier vendor/ absent
 
 
 RUNTIMES = (('deno', 'deno'), ('node', 'node'), ('qjs', 'quickjs'))
+# mweb est la seule identité qui passe le contrôle anti-robot sur Cormoran
+# (test du 31/10/2026, avec moteur JavaScript) ; réglable dans les réglages.
+DEFAULT_CLIENTS = 'mweb'
 
 
 def find_js_runtime(profile_dir, configured=''):
@@ -217,7 +220,8 @@ def _pick_subtitles(info, langs=('fr', 'en')):
 
 
 class Extractor:
-    def __init__(self, profile_dir, cookies='', max_height=1080, hls=False, js_runtime=None):
+    def __init__(self, profile_dir, cookies='', max_height=1080, hls=False, js_runtime=None,
+                 clients=DEFAULT_CLIENTS):
         if YoutubeDL is None:
             raise ExtractorError('yt-dlp introuvable (resources/lib/vendor)')
         self.profile_dir = profile_dir
@@ -225,6 +229,7 @@ class Extractor:
         self.max_height = max_height
         self.hls = hls
         self.js_runtime = js_runtime
+        self.clients = [c.strip() for c in (clients or '').split(',') if c.strip()]
 
     # --- options ---------------------------------------------------------
     def _opts(self, **extra):
@@ -237,8 +242,10 @@ class Extractor:
             'logger': _KodiLogger(),
             'cachedir': os.path.join(self.profile_dir, 'ytdlp-cache'),
             # Pour contourner un client YouTube qui casse, essayer par ex. :
-            # 'extractor_args': {'youtube': {'player_client': ['tv', 'web_safari']}},
         }
+        if self.clients:
+            # Identités de lecteur présentées à YouTube, dans l'ordre d'essai
+            opts['extractor_args'] = {'youtube': {'player_client': self.clients}}
         if self.js_runtime:
             key, path = self.js_runtime
             opts['js_runtimes'] = {key: {'path': path}}
