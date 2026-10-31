@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: plugin.video.ytlocal\n"
+"Project-Id-Version: plugin.video.wtube\n"
 "Language: en_GB\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -98,9 +98,6 @@ msgctxt "#30035"
 msgid "Subscription removed"
 msgstr ""
 
-msgctxt "#30036"
-msgid "Sponsor segment skipped"
-msgstr ""
 
 msgctxt "#30037"
 msgid "No subscriptions yet"
@@ -168,4 +165,320 @@ msgstr ""
 
 msgctxt "#30125"
 msgid "2160p (4K)"
+msgstr ""
+
+
+msgctxt "#30108"
+msgid "Remove from the stream (no interruption)"
+msgstr ""
+
+msgctxt "#30109"
+msgid "Skip during playback"
+msgstr ""
+
+msgctxt "#30111"
+msgid "SponsorBlock method"
+msgstr ""
+
+msgctxt "#30200"
+msgid "Home"
+msgstr ""
+
+msgctxt "#30201"
+msgid "Search"
+msgstr ""
+
+msgctxt "#30202"
+msgid "Subscriptions"
+msgstr ""
+
+msgctxt "#30203"
+msgid "History"
+msgstr ""
+
+msgctxt "#30204"
+msgid "Settings"
+msgstr ""
+
+msgctxt "#30205"
+msgid "New from your subscriptions"
+msgstr ""
+
+msgctxt "#30206"
+msgid "Recently watched"
+msgstr ""
+
+msgctxt "#30207"
+msgid "Play"
+msgstr ""
+
+msgctxt "#30208"
+msgid "Go to channel"
+msgstr ""
+
+msgctxt "#30210"
+msgid "Subscribed"
+msgstr ""
+
+msgctxt "#30212"
+msgid "More results"
+msgstr ""
+
+msgctxt "#30213"
+msgid "Loading…"
+msgstr ""
+
+msgctxt "#30214"
+msgid "Type a search, or pick a recent one"
+msgstr ""
+
+msgctxt "#30215"
+msgid "%d results for “%s”"
+msgstr ""
+
+msgctxt "#30216"
+msgid "Videos, channels, playlists… or paste a YouTube URL"
+msgstr ""
+
+msgctxt "#30217"
+msgid "Subscribe to channels to see their new videos here."
+msgstr ""
+
+msgctxt "#30218"
+msgid "Welcome"
+msgstr ""
+
+msgctxt "#30219"
+msgid "%d videos"
+msgstr ""
+
+msgctxt "#30220"
+msgid "%s subscribers"
+msgstr ""
+
+msgctxt "#30221"
+msgid "Back"
+msgstr ""
+
+
+msgctxt "#30223"
+msgid "%d new videos"
+msgstr ""
+
+msgctxt "#30224"
+msgid "%d channels followed"
+msgstr ""
+
+msgctxt "#30225"
+msgid "Full-screen interface"
+msgstr ""
+
+msgctxt "#30226"
+msgid "New"
+msgstr ""
+
+msgctxt "#30227"
+msgid "Nothing watched yet."
+msgstr ""
+
+msgctxt "#30228"
+msgid "watched %s"
+msgstr ""
+
+msgctxt "#30229"
+msgid "Featured"
+msgstr ""
+
+msgctxt "#30230"
+msgid "%d h ago"
+msgstr ""
+
+msgctxt "#30231"
+msgid "%d d ago"
+msgstr ""
+
+msgctxt "#30232"
+msgid "%d wk ago"
+msgstr ""
+
+msgctxt "#30233"
+msgid "No subscriptions yet: open a channel, then “Subscribe”."
+msgstr ""
+
+msgctxt "#30234"
+msgid "Playlist"
+msgstr ""
+
+msgctxt "#30236"
+msgid "Recent searches"
+msgstr ""
+
+msgctxt "#30237"
+msgid "%d new"
+msgstr ""
+
+msgctxt "#30238"
+msgid "%d mo ago"
+msgstr ""
+
+msgctxt "#30240"
+msgid "%s views"
+msgstr ""
+
+msgctxt "#30241"
+msgid "Channels"
+msgstr ""
+
+msgctxt "#30242"
+msgid "Resume from %s"
+msgstr ""
+
+msgctxt "#30243"
+msgid "Play from the beginning"
+msgstr ""
+
+msgctxt "#30244"
+msgid "Resume playback"
+msgstr ""
+
+msgctxt "#30245"
+msgid "Ask"
+msgstr ""
+
+msgctxt "#30246"
+msgid "Always resume"
+msgstr ""
+
+msgctxt "#30247"
+msgid "Never"
+msgstr ""
+
+msgctxt "#30248"
+msgid "Restart sound at start (HLS streams)"
+msgstr ""
+
+msgctxt "#30249"
+msgid "%s left"
+msgstr ""
+
+msgctxt "#30250"
+msgid "Favourites"
+msgstr ""
+
+msgctxt "#30251"
+msgid "Play next"
+msgstr ""
+
+msgctxt "#30252"
+msgid "Add to queue"
+msgstr ""
+
+msgctxt "#30253"
+msgid "Add to favourites"
+msgstr ""
+
+msgctxt "#30254"
+msgid "Remove from favourites"
+msgstr ""
+
+msgctxt "#30255"
+msgid "Mark as watched"
+msgstr ""
+
+msgctxt "#30256"
+msgid "Open playlist"
+msgstr ""
+
+msgctxt "#30257"
+msgid "Play whole playlist"
+msgstr ""
+
+msgctxt "#30258"
+msgid "Play queue (%d)"
+msgstr ""
+
+msgctxt "#30259"
+msgid "Will play next"
+msgstr ""
+
+msgctxt "#30260"
+msgid "Added to queue (%d)"
+msgstr ""
+
+msgctxt "#30261"
+msgid "Added to favourites"
+msgstr ""
+
+msgctxt "#30262"
+msgid "Removed from favourites"
+msgstr ""
+
+msgctxt "#30263"
+msgid "No favourites yet: use the context menu on a video."
+msgstr ""
+
+msgctxt "#30264"
+msgid "JavaScript engine (optional, auto-detected)"
+msgstr ""
+
+msgctxt "#30270"
+msgid "Widgets"
+msgstr ""
+
+msgctxt "#30271"
+msgid "New videos"
+msgstr ""
+
+msgctxt "#30272"
+msgid "Latest video of each channel"
+msgstr ""
+
+msgctxt "#30273"
+msgid "Continue watching"
+msgstr ""
+
+msgctxt "#30274"
+msgid "My channels"
+msgstr ""
+
+msgctxt "#30275"
+msgid "Channel widgets"
+msgstr ""
+
+msgctxt "#30276"
+msgid "Search widgets"
+msgstr ""
+
+msgctxt "#30277"
+msgid "Channel: %s"
+msgstr ""
+
+msgctxt "#30278"
+msgid "Search: %s"
+msgstr ""
+
+msgctxt "#30279"
+msgid "Install / update the JavaScript engine"
+msgstr ""
+
+msgctxt "#30281"
+msgid "YouTube requires a JavaScript engine to play this video. Download it now (about 40 MB)?"
+msgstr ""
+
+
+
+msgctxt "#30284"
+msgid "YouTube refused this video (anti-bot check)"
+msgstr ""
+
+msgctxt "#30285"
+msgid "Hide Shorts in new videos"
+msgstr ""
+
+msgctxt "#30286"
+msgid "Refresh subscriptions every (minutes)"
+msgstr ""
+
+msgctxt "#30287"
+msgid "The “JavaScript engine” add-on is not installed. Install it from your repository?"
 msgstr ""

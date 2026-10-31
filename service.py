@@ -1,0 +1,56 @@
+# -*- coding: utf-8 -*-
+"""Service de fond : relais HLS local (SponsorBlock sans coupure) et
+rafraîchissement régulier du flux des abonnements (widgets instantanés)."""
+import time
+
+import xbmc
+import xbmcaddon
+import xbmcgui
+import xbmcvfs
+
+from resources.lib import feed, widgets
+from resources.lib.hlsproxy import PROPERTY, Relay
+from resources.lib.storage import Storage
+
+FEED_PROPERTY = 'wtube.feed_updated'  # utilisable par le skin pour recharger les widgets
+
+
+def refresh_feed(profile):
+    addon = xbmcaddon.Addon()
+    db = Storage(profile)
+    try:
+        ids = [s['channel_id'] for s in db.list_subs()]
+    finally:
+        db.close()
+    if ids:
+        feed.fetch_all_cached(ids, profile, widgets.feed_ttl(addon), force=True)
+        xbmcgui.Window(10000).setProperty(FEED_PROPERTY, str(int(time.time())))
+    return widgets.feed_ttl(addon)
+
+
+def run():
+    relay = Relay()
+    port = relay.start()
+    home = xbmcgui.Window(10000)
+    if port:
+        home.setProperty(PROPERTY, str(port))
+        xbmc.log('[wtube] relais HLS démarré sur 127.0.0.1:%d' % port, xbmc.LOGINFO)
+    else:
+        xbmc.log('[wtube] relais HLS : aucun port libre, SponsorBlock passera par le saut', xbmc.LOGWARNING)
+    profile = xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo('profile'))
+    monitor = xbmc.Monitor()
+    next_refresh = time.time() + 20  # laisse Kodi finir de démarrer
+    while not monitor.waitForAbort(15):
+        if time.time() >= next_refresh:
+            try:
+                ttl = refresh_feed(profile)
+            except Exception as exc:  # le relais ne doit jamais tomber à cause du flux
+                xbmc.log('[wtube] rafraîchissement du flux : %s' % exc, xbmc.LOGWARNING)
+                ttl = 900
+            next_refresh = time.time() + ttl
+    home.clearProperty(PROPERTY)
+    relay.stop()
+
+
+if __name__ == '__main__':
+    run()

@@ -3,6 +3,9 @@
 
 Rapide, sans yt-dlp, sans compte (même principe que NewPipe / PipePipe).
 """
+import json
+import os
+import time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 
@@ -31,6 +34,8 @@ def fetch_channel(channel_id, timeout=10):
         vid = ent.findtext('yt:videoId', default='', namespaces=NS)
         if not vid:
             continue
+        link = ent.find('a:link', NS)
+        href = link.get('href', '') if link is not None else ''
         stats = ent.find('m:group/m:community/m:statistics', NS)
         views = 0
         if stats is not None:
@@ -50,6 +55,7 @@ def fetch_channel(channel_id, timeout=10):
             'description': (ent.findtext('m:group/m:description', default='', namespaces=NS) or '')[:300],
             'thumb': 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % vid,
             'url': '',
+            'short': '/shorts/' in href,
         })
     return out
 
@@ -68,3 +74,39 @@ def fetch_all(channel_ids, max_workers=8):
                 merged.append(e)
     merged.sort(key=lambda e: e['published'], reverse=True)
     return merged
+
+
+CACHE_FILE = 'feed_cache.json'
+
+
+def fetch_all_cached(channel_ids, cache_dir, ttl=900, force=False):
+    """fetch_all avec un cache disque partagé (interface, widgets, service).
+
+    Le service le rafraîchit en arrière-plan : les widgets s'affichent sans
+    interroger YouTube à chaque passage sur l'accueil du skin.
+    """
+    ids = sorted(set(channel_ids))
+    path = os.path.join(cache_dir, CACHE_FILE)
+    if not force:
+        try:
+            with open(path, encoding='utf-8') as fh:
+                data = json.load(fh)
+            if data.get('ids') == ids and time.time() - data.get('ts', 0) < ttl:
+                return data['entries']
+        except (OSError, ValueError, KeyError):
+            pass
+    entries = fetch_all(ids)
+    if entries or not ids:
+        tmp = '%s.%d.tmp' % (path, os.getpid())
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+            with open(tmp, 'w', encoding='utf-8') as fh:
+                json.dump({'ts': time.time(), 'ids': ids, 'entries': entries}, fh)
+            os.replace(tmp, path)
+        except OSError:
+            pass
+    return entries
+
+
+def without_shorts(entries, hide=True):
+    return [e for e in entries if not (hide and e.get('short'))]

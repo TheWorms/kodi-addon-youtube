@@ -1,9 +1,17 @@
 # -*- coding: utf-8 -*-
 """Construction des ListItem Kodi (aucune logique réseau ici)."""
+import xbmc
 import xbmcaddon
 import xbmcgui
 
 from .utils import fmt_count
+
+
+def _kodi_major():
+    try:
+        return int(xbmc.getInfoLabel('System.BuildVersion').split('.')[0])
+    except ValueError:
+        return 0
 
 
 def L(string_id):
@@ -84,8 +92,8 @@ def playable_item(stream):
     if stream.manifest == 'hls':
         li = xbmcgui.ListItem(label=stream.title, path=stream.url)
         li.setProperty('inputstream', 'inputstream.adaptive')
-        # Obsolète à partir de Kodi 21 (détection par type MIME) mais inoffensif.
-        li.setProperty('inputstream.adaptive.manifest_type', 'hls')
+        if _kodi_major() < 21:  # Kodi 21+ détecte le type de manifeste tout seul
+            li.setProperty('inputstream.adaptive.manifest_type', 'hls')
         hdr = stream.header_string()
         if hdr:
             li.setProperty('inputstream.adaptive.stream_headers', hdr)

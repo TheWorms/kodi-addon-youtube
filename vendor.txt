@@ -1,0 +1,4 @@
+# Paquets Python embarqués dans resources/lib/vendor/ au moment du build
+# (_repo_generator.py de kodi-repo). Toujours les dernières versions.
+yt-dlp
+yt-dlp-ejs

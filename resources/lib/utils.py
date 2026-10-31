@@ -34,15 +34,13 @@ def parse_target(text):
 
 
 def fmt_count(n):
-    """1234 -> '1.2k', 1500000 -> '1.5M'."""
+    """1234 -> '1.2k', 48000 -> '48k', 1500000 -> '1.5M'."""
     try:
         n = int(n)
     except (TypeError, ValueError):
         return ''
-    if n >= 1_000_000_000:
-        return '%.1fB' % (n / 1_000_000_000)
-    if n >= 1_000_000:
-        return '%.1fM' % (n / 1_000_000)
-    if n >= 1_000:
-        return '%.1fk' % (n / 1_000)
+    for div, unit in ((1_000_000_000, 'B'), (1_000_000, 'M'), (1_000, 'k')):
+        if n >= div:
+            value = '%.1f' % (n / div)
+            return (value[:-2] if value.endswith('.0') else value) + unit
     return str(n)

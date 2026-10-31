@@ -2,21 +2,59 @@
 """Extraction via yt-dlp : aucune clé API, aucun compte Google.
 
 C'est la seule couche qui parle à YouTube (avec feed.py pour le RSS).
-Quand YouTube casse quelque chose, on met à jour script.module.yt-dlp ;
+Quand YouTube casse quelque chose, on met à jour yt-dlp (resources/lib/vendor) ;
 le reste de l'addon ne bouge pas.
 """
 import os
+import shutil
+import sys
 from dataclasses import dataclass, field
 from urllib.parse import quote, urlencode
 
 import xbmc
 
+# yt-dlp est embarqué dans resources/lib/vendor (absent du dépôt officiel Kodi).
+_VENDOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'vendor')
+if os.path.isdir(_VENDOR) and _VENDOR not in sys.path:
+    sys.path.insert(0, _VENDOR)
+
 try:
     from yt_dlp import YoutubeDL
     from yt_dlp.utils import DownloadError
-except ImportError:  # script.module.yt-dlp absent
+except ImportError:  # dossier vendor/ absent
     YoutubeDL = None
     DownloadError = Exception
+
+
+RUNTIMES = (('deno', 'deno'), ('node', 'node'), ('qjs', 'quickjs'))
+
+
+def find_js_runtime(profile_dir, configured=''):
+    """Moteur JavaScript pour les défis YouTube : (nom yt-dlp, chemin) ou None.
+
+    Ordre : chemin indiqué dans les réglages, dossier bin/ du profil de
+    l'addon (où le script d'installation dépose Deno ou Node), puis PATH.
+    """
+    try:  # addon séparé « Moteur JavaScript » (script.module.jsruntime)
+        import jsruntime
+        found = jsruntime.find()
+        if found and not configured:
+            return found
+    except ImportError:
+        pass
+    candidates = []
+    if configured:
+        candidates.append(configured)
+    bindir = os.path.join(profile_dir, 'bin')
+    candidates += [os.path.join(bindir, exe) for exe, _ in RUNTIMES]
+    candidates += [shutil.which(exe) or '' for exe, _ in RUNTIMES]
+    for path in candidates:
+        if path and os.path.isfile(path) and os.access(path, os.X_OK):
+            base = os.path.basename(path).lower()
+            for exe, key in RUNTIMES:
+                if base.startswith(exe):
+                    return key, path
+    return None
 
 
 class ExtractorError(Exception):
@@ -33,10 +71,10 @@ class _KodiLogger:
         pass
 
     def warning(self, msg):
-        xbmc.log('[ytlocal] yt-dlp WARNING: %s' % msg, xbmc.LOGWARNING)
+        xbmc.log('[wtube] yt-dlp WARNING: %s' % msg, xbmc.LOGWARNING)
 
     def error(self, msg):
-        xbmc.log('[ytlocal] yt-dlp ERROR: %s' % msg, xbmc.LOGERROR)
+        xbmc.log('[wtube] yt-dlp ERROR: %s' % msg, xbmc.LOGERROR)
 
 
 @dataclass
@@ -94,8 +132,37 @@ def _normalize(entry):
         'channel_id': channel_id,
         'duration': entry.get('duration') or 0,
         'views': entry.get('view_count'),
+        'subs': entry.get('channel_follower_count'),
+        'count': entry.get('playlist_count'),
         'description': (entry.get('description') or '')[:300],
         'thumb': thumb,
+    }
+
+
+def _https(url):
+    return 'https:' + url if url and url.startswith('//') else (url or '')
+
+
+def _channel_meta(info):
+    """Nom, identifiant, abonnés, avatar et bannière d'une page de chaîne."""
+    avatar = banner = ''
+    for t in info.get('thumbnails') or []:
+        tid = t.get('id') or ''
+        if tid == 'avatar_uncropped':
+            avatar = _https(t.get('url'))
+        elif tid == 'banner_uncropped':
+            banner = _https(t.get('url'))
+    if not avatar:  # repli : la vignette carrée la plus grande
+        squares = [t for t in info.get('thumbnails') or []
+                   if t.get('width') and t.get('width') == t.get('height')]
+        if squares:
+            avatar = _https(max(squares, key=lambda t: t['width']).get('url'))
+    return {
+        'name': info.get('channel') or info.get('uploader') or '',
+        'channel_id': info.get('channel_id') or '',
+        'subs': info.get('channel_follower_count'),
+        'avatar': avatar,
+        'banner': banner,
     }
 
 
@@ -126,6 +193,18 @@ def _pick_hls(info):
     return ''
 
 
+def _summary(formats):
+    """Résumé compact des formats, pour le journal (diagnostic)."""
+    if not formats:
+        return 'aucun'
+    parts = []
+    for f in formats:
+        parts.append('%s:%s:%s/%s:%sp' % (
+            f.get('format_id'), f.get('protocol'),
+            (f.get('vcodec') or '-')[:4], (f.get('acodec') or '-')[:4], f.get('height') or 0))
+    return '%d → %s' % (len(formats), ' '.join(parts))
+
+
 def _pick_subtitles(info, langs=('fr', 'en')):
     urls = []
     subs = info.get('subtitles') or {}
@@ -138,13 +217,14 @@ def _pick_subtitles(info, langs=('fr', 'en')):
 
 
 class Extractor:
-    def __init__(self, profile_dir, cookies='', max_height=1080, hls=False):
+    def __init__(self, profile_dir, cookies='', max_height=1080, hls=False, js_runtime=None):
         if YoutubeDL is None:
-            raise ExtractorError('script.module.yt-dlp is not installed')
+            raise ExtractorError('yt-dlp introuvable (resources/lib/vendor)')
         self.profile_dir = profile_dir
         self.cookies = cookies
         self.max_height = max_height
         self.hls = hls
+        self.js_runtime = js_runtime
 
     # --- options ---------------------------------------------------------
     def _opts(self, **extra):
@@ -159,6 +239,9 @@ class Extractor:
             # Pour contourner un client YouTube qui casse, essayer par ex. :
             # 'extractor_args': {'youtube': {'player_client': ['tv', 'web_safari']}},
         }
+        if self.js_runtime:
+            key, path = self.js_runtime
+            opts['js_runtimes'] = {key: {'path': path}}
         if self.cookies and os.path.isfile(self.cookies):
             opts['cookiefile'] = self.cookies
         opts.update(extra)
@@ -172,14 +255,17 @@ class Extractor:
             raise ExtractorError(str(exc)) from exc
 
     # --- listes (extraction « flat », rapide) ----------------------------
-    def _flat(self, url, start, end):
+    def _flat_info(self, url, start, end):
         info = self._extract(
             url,
             extract_flat='in_playlist',
             noplaylist=False,
             playlist_items='%d-%d' % (start, end),
         )
-        return [_normalize(e) for e in (info.get('entries') or []) if e]
+        return info, [_normalize(e) for e in (info.get('entries') or []) if e]
+
+    def _flat(self, url, start, end):
+        return self._flat_info(url, start, end)[1]
 
     def search(self, query, page=1, size=20, kind='video'):
         """kind : 'video' | 'channel' | 'playlist'."""
@@ -192,22 +278,36 @@ class Extractor:
             url = 'https://www.youtube.com/results?search_query=%s&sp=%s' % (quote(query), quote(sp))
         return self._flat(url, start, end)
 
-    def channel_videos(self, channel, page=1, size=20):
-        """channel : identifiant UC... ou URL (/@handle, /channel/UC...)."""
+    def channel_page(self, channel, page=1, size=20, tab='videos'):
+        """Page d'une chaîne : (infos de la chaîne, entrées de l'onglet).
+
+        channel : identifiant UC... ou URL (/@handle, /channel/UC...).
+        tab : 'videos' ou 'playlists'.
+        """
         if channel.startswith('http'):
             url = channel.rstrip('/')
+            for suffix in ('/videos', '/playlists', '/featured', '/shorts', '/streams'):
+                if url.endswith(suffix):
+                    url = url[:-len(suffix)]
         else:
             url = 'https://www.youtube.com/channel/%s' % channel
-        if not url.endswith('/videos'):
-            url += '/videos'
         end = page * size
-        return self._flat(url, end - size + 1, end)
+        info, entries = self._flat_info('%s/%s' % (url, tab), end - size + 1, end)
+        return _channel_meta(info), entries
 
-    def playlist(self, playlist_id, page=1, size=20):
+    def channel_videos(self, channel, page=1, size=20):
+        return self.channel_page(channel, page, size, 'videos')[1]
+
+    def playlist_page(self, playlist_id, page=1, size=20):
+        """(titre de la playlist, entrées)."""
         end = page * size
-        return self._flat(
+        info, entries = self._flat_info(
             'https://www.youtube.com/playlist?list=%s' % playlist_id, end - size + 1, end
         )
+        return info.get('title') or '', entries
+
+    def playlist(self, playlist_id, page=1, size=20):
+        return self.playlist_page(playlist_id, page, size)[1]
 
     # --- lecture ---------------------------------------------------------
     def resolve(self, video_id):
@@ -239,6 +339,14 @@ class Extractor:
         # 2) Flux progressif audio+vidéo (fiable, plafonné ~720p)
         fmt = _pick_progressive(formats, self.max_height)
         if fmt is None:
+            # 3) Repli automatique sur le HLS si aucun flux combiné n'est servi
+            hls_url = _pick_hls(info)
+            if hls_url:
+                xbmc.log('[wtube] pas de flux progressif pour %s, repli HLS' % video_id, xbmc.LOGINFO)
+                headers = {'User-Agent': ua} if ua else {}
+                return Stream(url=hls_url, manifest='hls', headers=headers,
+                              mime='application/vnd.apple.mpegurl', **base)
+            xbmc.log('[wtube] formats reçus pour %s : %s' % (video_id, _summary(formats)), xbmc.LOGWARNING)
             raise ExtractorError('Aucun format lisible pour %s' % video_id)
         headers = dict(fmt.get('http_headers') or info.get('http_headers') or {})
         headers = {k: v for k, v in headers.items() if k in ('User-Agent', 'Referer')}

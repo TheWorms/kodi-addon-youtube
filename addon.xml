@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.ytlocal" name="Kodi YouTube" version="0.1.0" provider-name="Thib">
+<addon id="plugin.video.wtube" name="Wtube" version="0.5.0" provider-name="Thib">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
     <import addon="script.module.requests" version="2.22.0"/>
-    <!-- Module yt-dlp du dépôt officiel Kodi : ajuster la version minimale selon celle disponible chez toi -->
-    <import addon="script.module.yt-dlp" version="2022.1.1"/>
     <import addon="inputstream.adaptive" version="19.0.0" optional="true"/>
+    <import addon="script.module.jsruntime" version="1.0.1"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="main.py">
     <provides>video</provides>
   </extension>
+  <extension point="xbmc.service" library="service.py"/>
+  <extension point="xbmc.python.script" library="script.py"/>
   <extension point="xbmc.addon.metadata">
     <summary lang="fr_FR">YouTube sans compte ni API Google (extraction locale via yt-dlp)</summary>
     <summary lang="en_GB">YouTube without an account or Google API (local extraction via yt-dlp)</summary>
@@ -17,6 +18,10 @@
     <description lang="en_GB">Search, channels, playlists, local subscriptions, new-videos feed (RSS), history and SponsorBlock. No API key, no Google account: everything is stored locally, NewPipe / PipePipe style.</description>
     <platform>all</platform>
     <license>GPL-3.0-or-later</license>
-    <news>0.1.0 : squelette initial</news>
+    <assets>
+      <icon>resources/icon.png</icon>
+      <fanart>resources/fanart.jpg</fanart>
+    </assets>
+    <news>0.5.0 : nouvel identifiant plugin.video.wtube (données de plugin.video.ytlocal reprises automatiquement), moteur JavaScript requis (script.module.jsruntime), icône et fanart. 0.4.0 : widgets pour l'accueil du skin (nouveautés, une vidéo par chaîne, à reprendre, récemment regardées, favoris, mes chaînes, par chaîne, par recherche), masquage des Shorts, flux rafraîchi en arrière-plan, roue de chargement rouge, moteur JavaScript via l'addon séparé script.module.jsruntime. 0.3.2 : moteur JavaScript (Deno ou Node) pour passer les blocages YouTube, menu contextuel (lire ensuite, file d'attente, favoris, marquer comme vue, lire toute la playlist), écran Favoris, plus de notification SponsorBlock. 0.3.1 : thème rouge, reprise de lecture (choix au lancement), barres de progression, relance du son au démarrage des flux HLS. 0.3.0 : interface plein écran (accueil, recherche, abonnements, historique, chaînes, playlists). 0.2.0 : SponsorBlock sans coupure (relais HLS local), repli HLS, yt-dlp embarqué</news>
   </extension>
 </addon>

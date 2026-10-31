@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: plugin.video.ytlocal\n"
+"Project-Id-Version: plugin.video.wtube\n"
 "Language: fr_FR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -98,9 +98,6 @@ msgctxt "#30035"
 msgid "Subscription removed"
 msgstr "Abonnement supprimé"
 
-msgctxt "#30036"
-msgid "Sponsor segment skipped"
-msgstr "Segment sponsorisé ignoré"
 
 msgctxt "#30037"
 msgid "No subscriptions yet"
@@ -169,3 +166,319 @@ msgstr "1440p"
 msgctxt "#30125"
 msgid "2160p (4K)"
 msgstr "2160p (4K)"
+
+
+msgctxt "#30108"
+msgid "Remove from the stream (no interruption)"
+msgstr "Retirer du flux (sans coupure)"
+
+msgctxt "#30109"
+msgid "Skip during playback"
+msgstr "Sauter pendant la lecture"
+
+msgctxt "#30111"
+msgid "SponsorBlock method"
+msgstr "Méthode SponsorBlock"
+
+msgctxt "#30200"
+msgid "Home"
+msgstr "Accueil"
+
+msgctxt "#30201"
+msgid "Search"
+msgstr "Recherche"
+
+msgctxt "#30202"
+msgid "Subscriptions"
+msgstr "Abonnements"
+
+msgctxt "#30203"
+msgid "History"
+msgstr "Historique"
+
+msgctxt "#30204"
+msgid "Settings"
+msgstr "Réglages"
+
+msgctxt "#30205"
+msgid "New from your subscriptions"
+msgstr "Nouveautés de tes abonnements"
+
+msgctxt "#30206"
+msgid "Recently watched"
+msgstr "Récemment regardées"
+
+msgctxt "#30207"
+msgid "Play"
+msgstr "Lire"
+
+msgctxt "#30208"
+msgid "Go to channel"
+msgstr "Aller à la chaîne"
+
+msgctxt "#30210"
+msgid "Subscribed"
+msgstr "Abonné"
+
+msgctxt "#30212"
+msgid "More results"
+msgstr "Plus de résultats"
+
+msgctxt "#30213"
+msgid "Loading…"
+msgstr "Chargement…"
+
+msgctxt "#30214"
+msgid "Type a search, or pick a recent one"
+msgstr "Tape une recherche, ou choisis une recherche récente"
+
+msgctxt "#30215"
+msgid "%d results for “%s”"
+msgstr "%d résultats pour « %s »"
+
+msgctxt "#30216"
+msgid "Videos, channels, playlists… or paste a YouTube URL"
+msgstr "Vidéos, chaînes, playlists… ou colle une URL YouTube"
+
+msgctxt "#30217"
+msgid "Subscribe to channels to see their new videos here."
+msgstr "Abonne-toi à des chaînes pour voir leurs nouveautés ici."
+
+msgctxt "#30218"
+msgid "Welcome"
+msgstr "Bienvenue"
+
+msgctxt "#30219"
+msgid "%d videos"
+msgstr "%d vidéos"
+
+msgctxt "#30220"
+msgid "%s subscribers"
+msgstr "%s abonnés"
+
+msgctxt "#30221"
+msgid "Back"
+msgstr "Retour"
+
+
+msgctxt "#30223"
+msgid "%d new videos"
+msgstr "%d nouvelles vidéos"
+
+msgctxt "#30224"
+msgid "%d channels followed"
+msgstr "%d chaînes suivies"
+
+msgctxt "#30225"
+msgid "Full-screen interface"
+msgstr "Interface plein écran"
+
+msgctxt "#30226"
+msgid "New"
+msgstr "Nouveau"
+
+msgctxt "#30227"
+msgid "Nothing watched yet."
+msgstr "Aucune vidéo regardée pour l'instant."
+
+msgctxt "#30228"
+msgid "watched %s"
+msgstr "vu le %s"
+
+msgctxt "#30229"
+msgid "Featured"
+msgstr "À la une"
+
+msgctxt "#30230"
+msgid "%d h ago"
+msgstr "il y a %d h"
+
+msgctxt "#30231"
+msgid "%d d ago"
+msgstr "il y a %d j"
+
+msgctxt "#30232"
+msgid "%d wk ago"
+msgstr "il y a %d sem."
+
+msgctxt "#30233"
+msgid "No subscriptions yet: open a channel, then “Subscribe”."
+msgstr "Aucun abonnement : ouvre une chaîne, puis « S'abonner »."
+
+msgctxt "#30234"
+msgid "Playlist"
+msgstr "Playlist"
+
+msgctxt "#30236"
+msgid "Recent searches"
+msgstr "Recherches récentes"
+
+msgctxt "#30237"
+msgid "%d new"
+msgstr "%d nouvelles"
+
+msgctxt "#30238"
+msgid "%d mo ago"
+msgstr "il y a %d mois"
+
+msgctxt "#30240"
+msgid "%s views"
+msgstr "%s vues"
+
+msgctxt "#30241"
+msgid "Channels"
+msgstr "Chaînes"
+
+msgctxt "#30242"
+msgid "Resume from %s"
+msgstr "Reprendre à %s"
+
+msgctxt "#30243"
+msgid "Play from the beginning"
+msgstr "Lire depuis le début"
+
+msgctxt "#30244"
+msgid "Resume playback"
+msgstr "Reprise de lecture"
+
+msgctxt "#30245"
+msgid "Ask"
+msgstr "Demander"
+
+msgctxt "#30246"
+msgid "Always resume"
+msgstr "Toujours reprendre"
+
+msgctxt "#30247"
+msgid "Never"
+msgstr "Jamais"
+
+msgctxt "#30248"
+msgid "Restart sound at start (HLS streams)"
+msgstr "Relancer le son au démarrage (flux HLS)"
+
+msgctxt "#30249"
+msgid "%s left"
+msgstr "reste %s"
+
+msgctxt "#30250"
+msgid "Favourites"
+msgstr "Favoris"
+
+msgctxt "#30251"
+msgid "Play next"
+msgstr "Lire ensuite"
+
+msgctxt "#30252"
+msgid "Add to queue"
+msgstr "Ajouter à la file d'attente"
+
+msgctxt "#30253"
+msgid "Add to favourites"
+msgstr "Ajouter aux favoris"
+
+msgctxt "#30254"
+msgid "Remove from favourites"
+msgstr "Retirer des favoris"
+
+msgctxt "#30255"
+msgid "Mark as watched"
+msgstr "Marquer comme vue"
+
+msgctxt "#30256"
+msgid "Open playlist"
+msgstr "Ouvrir la playlist"
+
+msgctxt "#30257"
+msgid "Play whole playlist"
+msgstr "Lire toute la playlist"
+
+msgctxt "#30258"
+msgid "Play queue (%d)"
+msgstr "Lire la file d'attente (%d)"
+
+msgctxt "#30259"
+msgid "Will play next"
+msgstr "Sera lue ensuite"
+
+msgctxt "#30260"
+msgid "Added to queue (%d)"
+msgstr "Ajoutée à la file d'attente (%d)"
+
+msgctxt "#30261"
+msgid "Added to favourites"
+msgstr "Ajoutée aux favoris"
+
+msgctxt "#30262"
+msgid "Removed from favourites"
+msgstr "Retirée des favoris"
+
+msgctxt "#30263"
+msgid "No favourites yet: use the context menu on a video."
+msgstr "Aucun favori : utilise le menu contextuel d'une vidéo."
+
+msgctxt "#30264"
+msgid "JavaScript engine (optional, auto-detected)"
+msgstr "Moteur JavaScript (optionnel, détecté automatiquement)"
+
+msgctxt "#30270"
+msgid "Widgets"
+msgstr "Widgets"
+
+msgctxt "#30271"
+msgid "New videos"
+msgstr "Nouveautés"
+
+msgctxt "#30272"
+msgid "Latest video of each channel"
+msgstr "Une vidéo par chaîne"
+
+msgctxt "#30273"
+msgid "Continue watching"
+msgstr "À reprendre"
+
+msgctxt "#30274"
+msgid "My channels"
+msgstr "Mes chaînes"
+
+msgctxt "#30275"
+msgid "Channel widgets"
+msgstr "Widgets par chaîne"
+
+msgctxt "#30276"
+msgid "Search widgets"
+msgstr "Widgets de recherche"
+
+msgctxt "#30277"
+msgid "Channel: %s"
+msgstr "Chaîne : %s"
+
+msgctxt "#30278"
+msgid "Search: %s"
+msgstr "Recherche : %s"
+
+msgctxt "#30279"
+msgid "Install / update the JavaScript engine"
+msgstr "Installer / mettre à jour le moteur JavaScript"
+
+msgctxt "#30281"
+msgid "YouTube requires a JavaScript engine to play this video. Download it now (about 40 MB)?"
+msgstr "YouTube exige un moteur JavaScript pour lire cette vidéo. Le télécharger maintenant (environ 40 Mo) ?"
+
+
+
+msgctxt "#30284"
+msgid "YouTube refused this video (anti-bot check)"
+msgstr "YouTube a refusé cette vidéo (contrôle anti-robot)"
+
+msgctxt "#30285"
+msgid "Hide Shorts in new videos"
+msgstr "Masquer les Shorts dans les nouveautés"
+
+msgctxt "#30286"
+msgid "Refresh subscriptions every (minutes)"
+msgstr "Rafraîchir les abonnements toutes les (minutes)"
+
+msgctxt "#30287"
+msgid "The “JavaScript engine” add-on is not installed. Install it from your repository?"
+msgstr "L'addon « Moteur JavaScript » n'est pas installé. L'installer depuis ton dépôt ?"
