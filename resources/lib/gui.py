@@ -566,7 +566,8 @@ class MainWindow(xbmcgui.WindowXML):
                     continue
                 vid = li.getProperty('ytid')
                 if found and vid and vid != video_id:
-                    out.append({'id': vid, 'title': li.getLabel(), 'thumb': li.getArt('thumb')})
+                    out.append({'id': vid, 'title': li.getLabel(), 'thumb': li.getArt('thumb'),
+                                'channel': li.getProperty('channel')})
                 elif vid == video_id:
                     found = True
         except RuntimeError:

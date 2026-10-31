@@ -1,16 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Voile noir du fondu entre deux vidéos enchaînées (transition.py) -->
+<!-- Écran de transition entre deux vidéos enchaînées (transition.py) :
+     miniature HD de la vidéo suivante assombrie, roue rouge, « À suivre »,
+     titre et chaîne. Apparaît et disparaît en fondu. -->
 <window>
   <zorder>3</zorder>
-  <animation effect="fade" start="0" end="100" time="1100" tween="sine" easing="inout">WindowOpen</animation>
+  <animation effect="fade" start="0" end="100" time="500" tween="sine" easing="inout">WindowOpen</animation>
   <animation effect="fade" start="100" end="0" time="800" tween="sine" easing="inout">WindowClose</animation>
   <controls>
     <control type="image">
-      <left>0</left>
-      <top>0</top>
-      <width>1920</width>
-      <height>1080</height>
+      <left>0</left><top>0</top><width>1920</width><height>1080</height>
       <texture colordiffuse="FF000000">ytl_white.png</texture>
+    </control>
+    <!-- miniature : hqdefault d'abord (existe toujours), HD par-dessus si elle existe -->
+    <control type="image">
+      <left>0</left><top>0</top><width>1920</width><height>1080</height>
+      <texture background="true">$INFO[Window.Property(next.thumb)]</texture>
+      <aspectratio>scale</aspectratio>
+      <fadetime>300</fadetime>
+    </control>
+    <control type="image">
+      <left>0</left><top>0</top><width>1920</width><height>1080</height>
+      <texture background="true">$INFO[Window.Property(next.fanart)]</texture>
+      <aspectratio>scale</aspectratio>
+      <fadetime>300</fadetime>
+    </control>
+    <control type="image">
+      <left>0</left><top>0</top><width>1920</width><height>1080</height>
+      <texture colordiffuse="C8000000">ytl_white.png</texture>
+    </control>
+    <control type="group">
+      <visible>!String.IsEmpty(Window.Property(next.title))</visible>
+      <control type="image">
+        <left>924</left><top>392</top><width>72</width><height>72</height>
+        <texture colordiffuse="FFE6192E">ytl_spinner.png</texture>
+        <animation effect="rotate" start="0" end="-360" center="auto" time="900" loop="true" condition="true">Conditional</animation>
+      </control>
+      <control type="label">
+        <left>160</left><top>504</top><width>1600</width><height>44</height>
+        <font>font12</font><textcolor>FFE6192E</textcolor><align>center</align><aligny>center</aligny>
+        <label>$INFO[Window.Property(next.heading)]</label>
+      </control>
+      <control type="label">
+        <left>160</left><top>556</top><width>1600</width><height>60</height>
+        <font>font27</font><textcolor>FFFFFFFF</textcolor><align>center</align><aligny>center</aligny>
+        <label>$INFO[Window.Property(next.title)]</label>
+      </control>
+      <control type="label">
+        <left>160</left><top>620</top><width>1600</width><height>44</height>
+        <font>font13</font><textcolor>B3FFFFFF</textcolor><align>center</align><aligny>center</aligny>
+        <label>$INFO[Window.Property(next.channel)]</label>
+      </control>
     </control>
   </controls>
 </window>

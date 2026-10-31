@@ -71,5 +71,6 @@ def capture_from_container(current):
         vid = _video_id(path)
         if vid and vid != current:
             out.append({'id': vid, 'title': xbmc.getInfoLabel(base + '.Label'),
-                        'thumb': xbmc.getInfoLabel(base + '.Art(thumb)')})
+                        'thumb': xbmc.getInfoLabel(base + '.Art(thumb)'),
+                        'channel': xbmc.getInfoLabel(base + '.Studio')})
     return out

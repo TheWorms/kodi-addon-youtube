@@ -550,3 +550,7 @@ msgstr "Précharger la vidéo suivante (démarrage immédiat)"
 msgctxt "#30308"
 msgid "Fade between chained videos (picture and sound)"
 msgstr "Fondu entre les vidéos enchaînées (image et son)"
+
+msgctxt "#30309"
+msgid "UP NEXT"
+msgstr "À SUIVRE"

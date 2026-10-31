@@ -14,6 +14,7 @@ import xbmcgui
 
 ADDON_PATH = xbmcaddon.Addon('plugin.video.wtube').getAddonInfo('path')
 XML_FILE = 'script-wtube-fade.xml'
+HEADING = xbmcaddon.Addon('plugin.video.wtube').getLocalizedString(30309)
 
 
 def _rpc(method, params=None):
@@ -53,12 +54,22 @@ class Fade:
             _set_volume(start + (end - start) * i / steps)
             xbmc.sleep(int(seconds * 1000 / steps))
 
-    def out(self, seconds=1.2):
-        """Fondu au noir, volume vers 0 (ne bloque pas)."""
+    def out(self, seconds=1.2, nxt=None):
+        """Fondu vers l'écran « À suivre » (ou noir), volume vers 0 (ne bloque pas).
+
+        nxt : {'id', 'title', 'channel', 'thumb'} de la vidéo suivante.
+        """
         if self.veil is not None:
             return
         try:
             self.veil = _Veil(XML_FILE, ADDON_PATH, 'Default', '1080i')
+            if nxt:
+                vid = nxt.get('id') or ''
+                self.veil.setProperty('next.heading', HEADING)
+                self.veil.setProperty('next.title', nxt.get('title') or vid)
+                self.veil.setProperty('next.channel', nxt.get('channel') or '')
+                self.veil.setProperty('next.thumb', nxt.get('thumb') or 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % vid)
+                self.veil.setProperty('next.fanart', 'https://i.ytimg.com/vi/%s/maxresdefault.jpg' % vid)
             self.veil.show()
         except RuntimeError:
             self.veil = None

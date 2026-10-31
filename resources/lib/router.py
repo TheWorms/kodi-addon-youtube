@@ -21,7 +21,7 @@ RESUME_MIN = 15          # en dessous, on repart du début
 RESUME_END_MARGIN = 30   # dans les 30 dernières secondes : vidéo considérée comme vue
 NEXT_ASK_TIMEOUT = 15    # secondes avant que la question « vidéo suivante » se ferme (= arrêt)
 PRELOAD_BEFORE = 90      # secondes avant la fin : résolution de la vidéo suivante
-FADE_BEFORE = 1.3        # secondes avant la fin : début du fondu au noir
+FADE_BEFORE = 0.6        # secondes avant la fin : début du fondu au noir (court : ne pas manger la fin)
 
 
 class _NextHelper:
@@ -47,7 +47,7 @@ class _NextHelper:
         if self.fade_on and self.mode == 2 and self.fade is None and 0 < remaining <= FADE_BEFORE:
             from .transition import Fade
             self.fade = Fade()
-            self.fade.out(FADE_BEFORE)
+            self.fade.out(FADE_BEFORE, self.next)
 
     def _preload(self):
         vid = self.next['id']
@@ -65,7 +65,7 @@ class _NextHelper:
         if self.fade_on and self.fade is None:
             from .transition import Fade
             self.fade = Fade()
-            self.fade.out(0.6)
+            self.fade.out(0.6, self.next)
 
     def cancel(self):
         if self.fade is not None:
@@ -493,7 +493,7 @@ class Router:
         if stream.is_live:
             return
         kick = (stream.manifest == 'hls' and not start
-                and self.addon.getSetting('audio_kick') != 'false')
+                and self.addon.getSetting('hls_audio_kick') == 'true')  # désactivé par défaut depuis 0.6.12
         mode = self._autoplay_mode()
         helper = _NextHelper(self, video_id, mode) if mode else None
         try:
@@ -583,7 +583,8 @@ class Router:
                 saved_at = position
             if on_tick is not None:
                 on_tick(position, total)
-            if monitor.waitForAbort(0.5):
+            # Suivi plus fin dans les dernières secondes (fondu au bon moment)
+            if monitor.waitForAbort(0.1 if total and total - position < 3 else 0.5):
                 break
         self._save_resume(video_id, position, total)
         if not player.ended and not monitor.abortRequested():

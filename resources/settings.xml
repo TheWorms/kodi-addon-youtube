@@ -77,9 +77,9 @@
           </dependencies>
           <control type="toggle"/>
         </setting>
-        <setting id="audio_kick" type="boolean" label="30248">
+        <setting id="hls_audio_kick" type="boolean" label="30248">
           <level>0</level>
-          <default>true</default>
+          <default>false</default>
           <control type="toggle"/>
         </setting>
         <setting id="sponsorblock" type="boolean" label="30107">

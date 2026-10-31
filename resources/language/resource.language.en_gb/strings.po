@@ -550,3 +550,7 @@ msgstr ""
 msgctxt "#30308"
 msgid "Fade between chained videos (picture and sound)"
 msgstr ""
+
+msgctxt "#30309"
+msgid "UP NEXT"
+msgstr ""
