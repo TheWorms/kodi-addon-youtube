@@ -227,7 +227,7 @@ class MainWindow(xbmcgui.WindowXML):
                 PROFILE,
                 cookies=xbmcaddon.Addon(ADDON_ID).getSetting('cookies_file'),
                 max_height=setting_int('max_height', 1080),
-                hls=setting_int('playback_mode', 0) == 1,
+                hls=setting_int('stream_mode', 1) == 1,
                 js_runtime=find_js_runtime(PROFILE, xbmcaddon.Addon(ADDON_ID).getSetting('js_runtime')),
                 clients=xbmcaddon.Addon(ADDON_ID).getSetting('yt_clients') or DEFAULT_CLIENTS,
             )

@@ -63,7 +63,7 @@ class Router:
                 self._profile,
                 cookies=self.addon.getSettingString('cookies_file'),
                 max_height=self.addon.getSettingInt('max_height') or 1080,
-                hls=self.addon.getSettingInt('playback_mode') == 1,
+                hls=self.addon.getSetting('stream_mode') != '0',  # nouvel identifiant : l'ancien réglage gardait « 360p » enregistré
                 js_runtime=find_js_runtime(self._profile, self.addon.getSetting('js_runtime')),
                 clients=self.addon.getSetting('yt_clients') or DEFAULT_CLIENTS,
             )

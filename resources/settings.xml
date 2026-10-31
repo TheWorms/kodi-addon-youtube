@@ -3,7 +3,7 @@
   <section id="plugin.video.wtube">
     <category id="playback" label="30110">
       <group id="1">
-        <setting id="playback_mode" type="integer" label="30101">
+        <setting id="stream_mode" type="integer" label="30101">
           <level>0</level>
           <default>1</default>
           <constraints>
