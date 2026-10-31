@@ -31,10 +31,13 @@ RUNTIMES = (('deno', 'deno'), ('node', 'node'), ('qjs', 'quickjs'))
 # tv_simply et web_embedded donnent un flux qui se télécharge ; les flux de
 # mweb et android_vr sont coupés faute de « PO Token » ; tv, web, web_safari
 # et ios sont bloqués. Réglable dans les réglages (avancé).
-DEFAULT_CLIENTS = 'tv_simply,web_embedded,mweb'  # essayées une par une, flux testé
+# web_embedded d'abord : d'après le guide PO Token de yt-dlp, c'est la seule
+# des trois qui n'exige pas de PO Token (31/10/2026 : tv_simply refusé ou
+# bloqué « confirm you're not a bot », web_embedded lu à chaque fois).
+DEFAULT_CLIENTS = 'web_embedded,tv_simply,mweb'  # essayées une par une, flux testé
 # Anciennes valeurs par défaut, remplacées automatiquement (un réglage
 # enregistré par Kodi garde sinon l'ancienne valeur pour toujours).
-OLD_DEFAULTS = ('mweb', 'tv_simply,web_embedded')
+OLD_DEFAULTS = ('mweb', 'tv_simply,web_embedded', 'tv_simply,web_embedded,mweb')
 # Flux directs refusés sans PO Token (paramètre c= de l'URL du flux)
 PO_TOKEN_CLIENTS = ('MWEB', 'ANDROID_VR')
 
@@ -191,14 +194,30 @@ def _progressive_candidates(formats, max_height):
     return sorted(fit, key=lambda f: (_needs_po_token(f), -(f.get('height') or 0), -(f.get('tbr') or 0)))
 
 
-def _probe(url, headers, timeout=5):
-    """Le flux se télécharge-t-il vraiment ? (YouTube coupe la connexion des
-    flux refusés dès les premiers octets)."""
+PROBE_BYTES = 256 * 1024
+
+
+def _probe(url, headers, timeout=6):
+    """Le flux se télécharge-t-il vraiment ?
+
+    Requête faite comme Kodi (plage ouverte « bytes=0- ») et lecture de
+    256 Ko : YouTube accepte une petite plage fermée puis coupe la connexion
+    de Kodi pour les flux qu'il refuse (constaté le 31/10/2026).
+    """
     import urllib.request
-    req = urllib.request.Request(url, headers=dict(headers, Range='bytes=0-4095'))
+    req = urllib.request.Request(url, headers=dict(headers, Range='bytes=0-'))
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status in (200, 206) and len(resp.read(4096)) > 0
+            if resp.status not in (200, 206):
+                return False
+            got = 0
+            while got < PROBE_BYTES:
+                chunk = resp.read(min(65536, PROBE_BYTES - got))
+                if not chunk:
+                    break
+                got += len(chunk)
+            length = int(resp.headers.get('Content-Length') or 0)
+            return got >= min(PROBE_BYTES, length or PROBE_BYTES)
     except Exception:  # erreur HTTP, connexion coupée, délai dépassé
         return False
 
