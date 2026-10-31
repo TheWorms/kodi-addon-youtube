@@ -514,12 +514,16 @@ class Router:
     def _play_next(self, video_id, helper):
         """Fin naturelle de la vidéo : enchaîne la suivante de la liste."""
         monitor, player = xbmc.Monitor(), xbmc.Player()
-        if monitor.waitForAbort(1.5) or player.isPlaying():
-            return  # une file d'attente Kodi a pris le relais
         data = upnext.load(self._profile)
         if not data or data.get('current') != video_id or not data.get('next'):
             return
         nxt, rest = data['next'][0], data['next'][1:]
+        if helper.mode == 2:
+            # Écran « À suivre » tout de suite (si la vidéo s'est terminée avant
+            # le fondu prévu), il couvre l'attente jusqu'à la suivante.
+            helper.start_fade()
+        if monitor.waitForAbort(0.8) or player.isPlaying():
+            return  # une file d'attente Kodi a pris le relais
         if helper.mode == 1:
             title = nxt.get('title') or nxt['id']
             if not xbmcgui.Dialog().yesno(L(30293), '[B]%s[/B]' % title, nolabel=L(30295),

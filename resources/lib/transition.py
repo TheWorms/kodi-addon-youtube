@@ -7,6 +7,7 @@ en fondu quand la suivante démarre, pendant que le volume remonte.
 """
 import json
 import threading
+import time
 
 import xbmc
 import xbmcaddon
@@ -14,6 +15,7 @@ import xbmcgui
 
 ADDON_PATH = xbmcaddon.Addon('plugin.video.wtube').getAddonInfo('path')
 XML_FILE = 'script-wtube-fade.xml'
+MIN_VISIBLE = 2.5  # secondes : l'écran « À suivre » reste lisible même si la suite est prête aussitôt
 HEADING = xbmcaddon.Addon('plugin.video.wtube').getLocalizedString(30309)
 
 
@@ -47,6 +49,7 @@ class Fade:
         self.veil = None
         self.volume = None
         self._thread = None
+        self.shown_at = 0.0
 
     def _ramp(self, start, end, seconds):
         steps = 12
@@ -71,6 +74,7 @@ class Fade:
                 self.veil.setProperty('next.thumb', nxt.get('thumb') or 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % vid)
                 self.veil.setProperty('next.fanart', 'https://i.ytimg.com/vi/%s/maxresdefault.jpg' % vid)
             self.veil.show()
+            self.shown_at = time.time()
         except RuntimeError:
             self.veil = None
         self.volume = _get_volume()
@@ -84,6 +88,9 @@ class Fade:
             self._thread.join(3)
             self._thread = None
         if self.veil is not None:
+            left = MIN_VISIBLE - (time.time() - self.shown_at)
+            if left > 0:
+                xbmc.sleep(int(left * 1000))
             self.veil.close()  # animation de fermeture (fondu) définie dans le XML
             self.veil = None
         if self.volume:
