@@ -44,3 +44,9 @@ def fmt_count(n):
             value = '%.1f' % (n / div)
             return (value[:-2] if value.endswith('.0') else value) + unit
     return str(n)
+
+
+def video_fanart(video_id):
+    """Image 16:9 en 1280x720, en JPEG (le WebP n'est pas lu par tous les
+    scripts de skin, ex. le flou d'arrière-plan d'Embuary)."""
+    return 'https://i.ytimg.com/vi/%s/maxresdefault.jpg' % video_id

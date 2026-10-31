@@ -4,7 +4,7 @@ import xbmc
 import xbmcaddon
 import xbmcgui
 
-from .utils import fmt_count
+from .utils import fmt_count, video_fanart
 
 
 def _kodi_major():
@@ -57,6 +57,8 @@ def make_item(e, url_fn, subscribed=(), in_history=False):
     li = xbmcgui.ListItem(label=e['title'])
     if e.get('thumb'):
         li.setArt({'thumb': e['thumb'], 'icon': e['thumb']})
+    if kind == 'video' and e.get('id'):
+        li.setArt({'fanart': video_fanart(e['id']), 'landscape': video_fanart(e['id'])})
 
     ctx = []
     cid = e.get('channel_id') or ''
@@ -103,7 +105,7 @@ def playable_item(stream):
         li.setMimeType(stream.mime)
     li.setContentLookup(False)
     if stream.thumb:
-        li.setArt({'thumb': stream.thumb, 'icon': stream.thumb})
+        li.setArt({'thumb': stream.thumb, 'icon': stream.thumb, 'fanart': stream.fanart or stream.thumb})
     if stream.subtitles:
         li.setSubtitles(stream.subtitles)
     return li

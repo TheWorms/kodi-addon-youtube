@@ -12,9 +12,13 @@ import json
 import os
 import time
 
+import xbmcaddon
 import xbmcgui
 
 from . import feed
+from .utils import video_fanart
+
+ADDON_FANART = os.path.join(xbmcaddon.Addon('plugin.video.wtube').getAddonInfo('path'), 'resources', 'fanart.jpg')
 
 SEARCH_TTL = 3600
 
@@ -46,8 +50,7 @@ def video_li(e, url_fn, L, resume=None, favorite=False, label_channel=True):
         li.setLabel2(e['channel'])
     thumb = e.get('thumb') or 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % vid
     li.setArt({'thumb': thumb, 'icon': thumb, 'poster': thumb,
-               'fanart': 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % vid,
-               'landscape': 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % vid})
+               'fanart': video_fanart(vid), 'landscape': video_fanart(vid)})
     tag = li.getVideoInfoTag()
     tag.setMediaType('video')
     tag.setTitle(title)
@@ -87,7 +90,7 @@ def video_li(e, url_fn, L, resume=None, favorite=False, label_channel=True):
 def channel_li(sub, url_fn):
     li = xbmcgui.ListItem(sub['name'])
     thumb = sub.get('thumb') or ''
-    li.setArt({'thumb': thumb, 'icon': thumb, 'poster': thumb})
+    li.setArt({'thumb': thumb, 'icon': thumb, 'poster': thumb, 'fanart': ADDON_FANART})
     return url_fn(action='channel', channel=sub['channel_id']), li, True
 
 

@@ -85,6 +85,7 @@ class Stream:
     url: str
     title: str = ''
     thumb: str = ''
+    fanart: str = ''
     duration: int = 0
     channel: str = ''
     channel_id: str = ''
@@ -339,7 +340,10 @@ class Extractor:
         formats = info.get('formats') or []
         base = dict(
             title=info.get('title') or video_id,
-            thumb=info.get('thumbnail') or 'https://i.ytimg.com/vi/%s/hqdefault.jpg' % video_id,
+            # JPEG (le WebP de yt-dlp n'est pas lu par tous les scripts de skin) ;
+            # hqdefault existe pour toutes les vidéos, l'image HD sert de fond.
+            thumb='https://i.ytimg.com/vi/%s/hqdefault.jpg' % video_id,
+            fanart='https://i.ytimg.com/vi/%s/maxresdefault.jpg' % video_id,
             duration=int(info.get('duration') or 0),
             channel=info.get('channel') or info.get('uploader') or '',
             channel_id=info.get('channel_id') or '',
