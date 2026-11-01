@@ -20,13 +20,22 @@ NS = {
 
 
 def fetch_channel(channel_id, timeout=10):
-    """Retourne les ~15 dernières vidéos d'une chaîne (liste vide en cas d'erreur)."""
-    try:
-        resp = requests.get(FEED_URL.format(channel_id), timeout=timeout)
-        resp.raise_for_status()
-        root = ET.fromstring(resp.content)
-    except (requests.RequestException, ET.ParseError):
-        return []
+    """Retourne les ~15 dernières vidéos d'une chaîne, ou None en cas d'erreur
+    (YouTube limite les requêtes, surtout derrière un VPN : HTTP 429)."""
+    root = None
+    for attempt in range(2):
+        try:
+            resp = requests.get(FEED_URL.format(channel_id), timeout=timeout)
+            if resp.status_code == 429 and attempt == 0:
+                time.sleep(2)  # un seul nouvel essai, un peu plus tard
+                continue
+            resp.raise_for_status()
+            root = ET.fromstring(resp.content)
+            break
+        except (requests.RequestException, ET.ParseError):
+            return None
+    if root is None:
+        return None
 
     author = root.findtext('a:author/a:name', default='', namespaces=NS)
     out = []
@@ -60,12 +69,25 @@ def fetch_channel(channel_id, timeout=10):
     return out
 
 
-def fetch_all(channel_ids, max_workers=8):
-    """Fusionne les flux de toutes les chaînes, du plus récent au plus ancien."""
+def fetch_all(channel_ids, max_workers=4, previous=None):
+    """Fusionne les flux de toutes les chaînes, du plus récent au plus ancien.
+
+    previous : entrées déjà connues ; une chaîne dont le flux est refusé garde
+    ses anciennes vidéos au lieu de disparaître des nouveautés.
+    Retourne (entrées, nombre de chaînes en échec).
+    """
     if not channel_ids:
-        return []
-    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        return [], 0
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:  # 4 : moins de refus 429
         results = list(pool.map(fetch_channel, channel_ids))
+    failed = 0
+    old = {}
+    for e in previous or []:
+        old.setdefault(e.get('channel_id'), []).append(e)
+    for i, (cid, entries) in enumerate(zip(channel_ids, results)):
+        if entries is None:
+            failed += 1
+            results[i] = old.get(cid, [])
     seen, merged = set(), []
     for entries in results:
         for e in entries:
@@ -73,7 +95,7 @@ def fetch_all(channel_ids, max_workers=8):
                 seen.add(e['id'])
                 merged.append(e)
     merged.sort(key=lambda e: e['published'], reverse=True)
-    return merged
+    return merged, failed
 
 
 CACHE_FILE = 'feed_cache.json'
@@ -87,15 +109,26 @@ def fetch_all_cached(channel_ids, cache_dir, ttl=900, force=False):
     """
     ids = sorted(set(channel_ids))
     path = os.path.join(cache_dir, CACHE_FILE)
-    if not force:
+    previous = []
+    try:
+        with open(path, encoding='utf-8') as fh:
+            data = json.load(fh)
+        previous = data.get('entries') or []
+        if not force and data.get('ids') == ids and time.time() - data.get('ts', 0) < ttl:
+            return previous
+    except (OSError, ValueError, KeyError):
+        pass
+    entries, failed = fetch_all(ids, previous=previous)
+    if failed:
         try:
-            with open(path, encoding='utf-8') as fh:
-                data = json.load(fh)
-            if data.get('ids') == ids and time.time() - data.get('ts', 0) < ttl:
-                return data['entries']
-        except (OSError, ValueError, KeyError):
+            import xbmc
+            xbmc.log('[wtube] nouveautés : %d chaîne(s) sur %d refusée(s) par YouTube, anciennes vidéos conservées'
+                     % (failed, len(ids)), xbmc.LOGWARNING)
+        except ImportError:
             pass
-    entries = fetch_all(ids)
+    if failed == len(ids) and previous:
+        # Tout refusé : on garde le cache tel quel ; nouvel essai au prochain passage
+        return [e for e in previous if e.get('channel_id') in set(ids)]
     if entries or not ids:
         tmp = '%s.%d.tmp' % (path, os.getpid())
         try:
