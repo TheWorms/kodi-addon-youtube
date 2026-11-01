@@ -7,7 +7,7 @@
 # Wtube — YouTube pour Kodi
 
 <!-- version:auto -->
-**Version : 0.6.23**
+**Version : 0.6.24**
 <!-- /version:auto -->
 
 Module Kodi pour regarder **YouTube sans compte et sans clé d'API Google**, avec une interface
@@ -94,6 +94,9 @@ vides). Avec l'addon [ProtonVPN](https://github.com/TheWorms/kodi-addon-protonvp
 l'option **YouTube hors du VPN** fait sortir le trafic Google / YouTube par la connexion normale ;
 Wtube ajoute lui-même une route directe pour chaque serveur vidéo hébergé chez le fournisseur
 d'accès. Le reste du trafic reste dans le tunnel.
+ProtonVPN 0.5.15 ou plus est conseillé : avant, après un redémarrage de Kodi ou une reconnexion,
+le tunnel WireGuard pouvait repasser devant et YouTube repartait dans le VPN (Wtube le signale
+alors dans le journal de Kodi).
 
 **Activation automatique.** Si ProtonVPN est installé, Wtube active cette option **une seule fois**,
 au démarrage de Kodi, et l'annonce par une notification. Si ProtonVPN est installé ou mis à jour plus

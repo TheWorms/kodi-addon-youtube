@@ -32,13 +32,38 @@ GOOGLE_RANGES = tuple(ipaddress.ip_network(c) for c in (
     '216.58.192.0/19', '216.239.32.0/19',
 ))
 
+PROBE_IP = '142.250.179.110'  # adresse de youtube.com, dans les plages ci-dessus
+TUNNEL_DEVS = ('wg', 'tun', 'pvpn', 'proton')
+
 _done = set()      # adresses déjà traitées par ce processus
 _disabled = False  # « ip » indisponible ou refusé : on n'insiste pas
+_checked = False   # route effective vérifiée (une fois par processus)
 
 
-def _log(msg):
+def _log(msg, warning=False):
     if xbmc is not None:
-        xbmc.log('[wtube] hors VPN : %s' % msg, xbmc.LOGINFO)
+        xbmc.log('[wtube] hors VPN : %s' % msg, xbmc.LOGWARNING if warning else xbmc.LOGINFO)
+
+
+def check_route():
+    """Une fois par processus : YouTube sort-il vraiment hors du tunnel ?
+
+    Les règles de l'option peuvent exister sans s'appliquer : ProtonVPN
+    0.5.14 et avant laissait wg-quick placer les siennes devant après une
+    reconnexion. Tout repartait alors dans le VPN (HTTP 429, vidéos coupées)
+    sans aucune trace. Retourne le nom de l'interface de sortie ('' si inconnu).
+    """
+    global _checked
+    if _checked or not _table():
+        return ''
+    _checked = True
+    ok, out = _ip(['route', 'get', PROBE_IP])
+    parts = out.split()
+    dev = parts[parts.index('dev') + 1] if ok and 'dev' in parts[:-1] else ''
+    if dev.startswith(TUNNEL_DEVS):
+        _log('YouTube sort encore par le VPN (%s) malgré l\'option : '
+             'mettre à jour ProtonVPN (0.5.15 ou plus récent)' % dev, warning=True)
+    return dev
 
 
 def _table():
@@ -81,6 +106,7 @@ def ensure_host(host):
     table = _table()
     if not table or not host or _disabled:
         return
+    check_route()
     try:
         infos = socket.getaddrinfo(host, 443, socket.AF_INET, socket.SOCK_STREAM)
     except OSError:

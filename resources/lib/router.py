@@ -109,6 +109,7 @@ class Router(PlaybackMixin):
             ' | Window.IsActive(addoninformation) | Window.IsActive(script-skinshortcuts.xml)'
             ' | Window.IsActive(script-skinshortcuts-menu.xml)')
         if self.addon.getSetting('ui_fullscreen') != 'false' and user_open:
+            log('ouverture : interface plein écran')
             # L'invocation plugin rend la main à Kodi, puis la fenêtre s'ouvre
             xbmcplugin.endOfDirectory(self.handle, succeeded=False, cacheToDisc=False)
             try:

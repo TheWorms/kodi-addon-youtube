@@ -329,6 +329,7 @@ class MainWindow(xbmcgui.WindowXML):
             self._run(self._load_recent)
             return
         self._ready = True
+        log('fenêtre affichée')
         self._fill(NAV, self._nav_items())
         # La barre latérale est vide quand Kodi applique le focus par défaut
         # (« Control 9000 … can't focus ») : on le pose une fois remplie.
@@ -807,6 +808,7 @@ class MainWindow(xbmcgui.WindowXML):
 
     def _load_home(self):
         gen = self._next_gen('home')
+        started = time.time()
         self.home_dirty = False
         self._load_recent()
         db = self._db()
@@ -819,6 +821,7 @@ class MainWindow(xbmcgui.WindowXML):
                                         widgets.feed_ttl(addon),
                                         fallback=lambda cid: self.ex.channel_feed(cid)) if subs else []
         entries = feed.without_shorts(entries, widgets.hide_shorts(addon))
+        log('accueil : %d nouveautés en %.1f s' % (len(entries), time.time() - started))
         if self._stale('home', gen):
             return
         for e in entries:
@@ -1121,6 +1124,7 @@ def open_main():
     try:
         win = MainWindow(XML_FILE, ADDON_PATH, 'Default', '1080i')
         home.setProperty(GUARD_PROP, '1')
+        log('fenêtre créée')
         win.doModal()
         win._closed.set()  # plus aucun chargement en cours n'écrit dans la fenêtre
         user_quit = win.user_quit
