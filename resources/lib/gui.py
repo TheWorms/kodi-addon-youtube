@@ -197,6 +197,7 @@ class MainWindow(xbmcgui.WindowXML):
         # Kodi construit la fenêtre dans __new__ avec ces arguments : ne pas les
         # repasser à __init__ (TypeError sous Python 3).
         self._ready = False
+        self.user_quit = False  # fermée par l'utilisateur (Retour depuis le menu)
         self._closed = threading.Event()
         self._lock = threading.Lock()
         self._busy = 0
@@ -342,6 +343,7 @@ class MainWindow(xbmcgui.WindowXML):
         self._closed.set()
 
     def _quit(self):
+        self.user_quit = True
         self._closed.set()
         self.close()
 
@@ -1113,15 +1115,19 @@ def open_main():
         log('relance juste après fermeture, ignorée')
         return
     home.setProperty(GUARD_PROP, 'pending')
+    user_quit = False
     try:
         win = MainWindow(XML_FILE, ADDON_PATH, 'Default', '1080i')
         home.setProperty(GUARD_PROP, '1')
         win.doModal()
+        user_quit = win.user_quit
         del win
     finally:
         home.clearProperty(GUARD_PROP)
         home.setProperty(CLOSED_PROP, '%f' % time.time())
-        # Ouverte depuis Vidéos > Extensions, Kodi reviendrait sur la page
-        # vide du plugin, qui relancerait l'interface : on rentre à l'accueil.
-        if xbmc.getCondVisibility('String.StartsWith(Container.FolderPath,plugin://%s)' % ADDON_ID):
-            xbmc.executebuiltin('ReplaceWindow(home)')
+    # Retour depuis l'interface : toujours l'accueil de Kodi. Sinon Kodi
+    # réaffiche la fenêtre d'où l'addon a été lancé (Vidéos > Extensions,
+    # l'explorateur de fichiers), ou la page vide du plugin qui relancerait
+    # l'interface. ReplaceWindow : l'explorateur ne reste pas dans l'historique.
+    if user_quit and not xbmc.Monitor().abortRequested() and not xbmc.getCondVisibility('Window.IsActive(home)'):
+        xbmc.executebuiltin('ReplaceWindow(home)')
