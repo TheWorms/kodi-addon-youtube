@@ -7,7 +7,7 @@
 # Wtube — YouTube pour Kodi
 
 <!-- version:auto -->
-**Version : 0.6.21**
+**Version : 0.6.22**
 <!-- /version:auto -->
 
 Module Kodi pour regarder **YouTube sans compte et sans clé d'API Google**, avec une interface
