@@ -24,6 +24,8 @@ PRELOAD_BEFORE = 90      # secondes avant la fin : résolution de la vidéo suiv
 PLAY_FAILED = 'wtube.play_failed'  # propriété Home : vidéo dont la lecture a échoué
 NEXT_START_TIMEOUT = 25  # secondes d'attente maximum du démarrage de la vidéo enchaînée
 REWIND_FROM = 3.0        # démarrage HLS au-delà : premier segment sauté, on revient à 0:00
+EARLY_END = 15           # secondes : fin de lecture plus tôt que ça avant la fin = coupure, pas fin
+MAX_RECOVER = 2          # reprises automatiques après une coupure, par vidéo
 FADE_BEFORE = 0.6        # secondes avant la fin : début du fondu au noir (court : ne pas manger la fin)
 
 
@@ -99,6 +101,9 @@ def log(msg, level=xbmc.LOGINFO):
 class PlaybackMixin:
     """Méthodes de lecture de Router (voir l'en-tête du module)."""
 
+    _last_position = 0.0  # où le suivi de lecture s'est arrêté (secondes)
+    _last_total = 0.0
+
     def _resume_choice(self, video_id, ask=True):
         """Position de départ (secondes), 0 = début, None = lecture annulée."""
         try:
@@ -168,11 +173,38 @@ class PlaybackMixin:
                                 on_tick=helper.tick if helper else None,
                                 rewind=stream.manifest == 'hls' and not start,
                                 previous_file=previous_file)
-            if ended and helper:
+            if ended and self._cut_short(stream, segments):
+                # Flux interrompu avant la fin (serveur coupé, réseau) : Kodi le
+                # signale comme une fin normale. On reprend là où ça s'est arrêté
+                # au lieu de passer à la vidéo suivante.
+                self._recover(video_id)
+            elif ended and helper:
                 self._play_next(video_id, helper)
         finally:
             if helper:
                 helper.cancel()  # image et volume toujours rétablis
+
+    def _cut_short(self, stream, segments):
+        position, total = self._last_position, self._last_total
+        reference = total
+        if stream.duration and not segments:
+            # durée annoncée par YouTube (sans SponsorBlock, le flux n'est pas raccourci)
+            reference = max(total, stream.duration)
+        if not reference or position >= reference - EARLY_END:
+            return False
+        log('%s : lecture interrompue à %d s sur %d s' % (stream.title[:40] or '?', position, reference),
+            xbmc.LOGWARNING)
+        return True
+
+    def _recover(self, video_id):
+        tries = int(self.params.get('retry') or 0)
+        if tries >= MAX_RECOVER:
+            log('%s : trop de coupures, abandon' % video_id, xbmc.LOGWARNING)
+            return
+        resume_at = max(0.0, self._last_position - 3)
+        log('%s : reprise automatique à %d s (essai %d)' % (video_id, resume_at, tries + 1))
+        xbmc.executebuiltin('PlayMedia(%s)' % self.url(action='play', id=video_id, chain='1',
+                                                        resume_at='%.1f' % resume_at, retry=str(tries + 1)))
 
     def _prepare(self, video_id):
         """Tout ce qui précède setResolvedUrl ; None si l'utilisateur annule."""
@@ -180,7 +212,9 @@ class PlaybackMixin:
         if not chained and not upnext.is_fresh_for(upnext.load(self._profile), video_id):
             # Lancée depuis une liste classique ou un widget : on fige la suite de la liste.
             upnext.save(self._profile, video_id, upnext.capture_from_container(video_id))
-        if self.params.get('kodiresume') == '1':
+        if self.params.get('resume_at'):
+            start = float(self.params['resume_at'])  # reprise automatique après une coupure
+        elif self.params.get('kodiresume') == '1':
             start = 0  # Kodi a déjà posé la question et applique lui-même la reprise
         else:
             start = self._resume_choice(video_id, ask=not chained)  # avant l'extraction : réponse immédiate
@@ -325,6 +359,7 @@ class PlaybackMixin:
             if monitor.waitForAbort(0.1 if total and total - position < 3 else 0.5):
                 break
         self._save_resume(video_id, position, total)
+        self._last_position, self._last_total = position, total
         if not player.ended and not monitor.abortRequested():
             monitor.waitForAbort(0.5)  # laisse arriver le rappel de fin de lecture
         # Fin naturelle : rappel Kodi, ou position arrivée au bout (repli)

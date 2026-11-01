@@ -9,8 +9,9 @@ import os
 import re
 import shutil
 import sys
+import threading
 from dataclasses import dataclass, field
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 
 import xbmc
 
@@ -232,10 +233,37 @@ def _probe_hls(master_url, headers, max_height, timeout=6):
         fit = [v for v in variants if v[0][0] <= max_height] or variants
         variant_url = max(fit)[1]
         playlist = get(variant_url).decode('utf-8', 'replace')
-        segment = next((l.strip() for l in playlist.splitlines() if l.strip() and not l.startswith('#')), '')
-        return bool(segment) and len(get(urljoin(variant_url, segment), 65536)) > 0
+        segments = [urljoin(variant_url, l.strip()) for l in playlist.splitlines()
+                    if l.strip() and not l.startswith('#')]
+        if direct.active():
+            # Hors VPN : tous les serveurs de la vidéo doivent être routés en
+            # direct, sinon un segment servi par un autre serveur passerait par
+            # le tunnel et serait refusé en cours de lecture (vidéo coupée).
+            for host in {urlsplit(u).hostname for u in segments}:
+                direct.ensure_host(host)
+            others = [u for _, u in variants if u != variant_url]
+            threading.Thread(target=_route_variants, args=(others, headers, timeout), daemon=True).start()
+        return bool(segments) and len(get(segments[0], 65536)) > 0
     except Exception:  # erreur HTTP, connexion coupée, délai dépassé
         return False
+
+
+def _route_variants(urls, headers, timeout):
+    """Routes directes pour les serveurs des autres qualités (changement de
+    qualité en cours de lecture), en arrière-plan."""
+    import urllib.request
+    from urllib.parse import urljoin
+    for url in urls:
+        try:
+            direct.ensure_url(url)
+            req = urllib.request.Request(url, headers=dict(headers))
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                text = resp.read().decode('utf-8', 'replace')
+            for host in {urlsplit(urljoin(url, l.strip())).hostname for l in text.splitlines()
+                         if l.strip() and not l.startswith('#')}:
+                direct.ensure_host(host)
+        except Exception:
+            continue
 
 
 def _probe(url, headers, timeout=6):

@@ -69,6 +69,11 @@ def _existing(table):
     return found
 
 
+def active():
+    """L'option « YouTube hors du VPN » de ProtonVPN est-elle en service ?"""
+    return bool(_table()) and not _disabled
+
+
 def ensure_host(host):
     """Route directe pour toutes les adresses IPv4 de `host` (si l'option
     ProtonVPN est active). Ne lève jamais d'exception."""
