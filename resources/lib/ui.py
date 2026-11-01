@@ -35,20 +35,14 @@ def _set_info(li, e):
         lines.append(e['description'])
     plot = '\n'.join(x for x in lines if x)
 
-    if hasattr(li, 'getVideoInfoTag'):  # Kodi 20+
-        tag = li.getVideoInfoTag()
-        tag.setTitle(e['title'])
-        tag.setMediaType('video')
-        tag.setPlot(plot)
-        if e.get('duration'):
-            tag.setDuration(int(e['duration']))
-        if e.get('channel'):
-            tag.setStudios([e['channel']])
-    else:  # Kodi 19
-        info = {'title': e['title'], 'mediatype': 'video', 'plot': plot}
-        if e.get('duration'):
-            info['duration'] = int(e['duration'])
-        li.setInfo('video', info)
+    tag = li.getVideoInfoTag()
+    tag.setTitle(e['title'])
+    tag.setMediaType('video')
+    tag.setPlot(plot)
+    if e.get('duration'):
+        tag.setDuration(int(e['duration']))
+    if e.get('channel'):
+        tag.setStudios([e['channel']])
 
 
 def make_item(e, url_fn, subscribed=(), in_history=False):

@@ -15,8 +15,7 @@ import time
 import xbmcaddon
 import xbmcgui
 
-from . import feed
-from .utils import background_art
+from .utils import atomic_write_json, background_art
 
 ADDON_FANART = os.path.join(xbmcaddon.Addon('plugin.video.wtube').getAddonInfo('path'), 'resources', 'fanart.jpg')
 
@@ -117,12 +116,18 @@ def cached_search(ex, cache_dir, query, size):
             return data['entries']
     except (OSError, ValueError, KeyError):
         pass
-    entries = [e for e in ex.search(query, 1, size, 'video') if e.get('id')]
     try:
-        tmp = path + '.tmp'
-        with open(tmp, 'w', encoding='utf-8') as fh:
-            json.dump({'ts': time.time(), 'entries': entries}, fh)
-        os.replace(tmp, path)
-    except OSError:
-        pass
+        entries = [e for e in ex.search(query, 1, size, 'video') if e.get('id')]
+    except Exception as exc:  # widget : jamais d'erreur à l'écran, ancien résultat gardé
+        try:
+            import xbmc
+            xbmc.log('[wtube] widget de recherche « %s » : %s' % (query, str(exc)[:120]), xbmc.LOGWARNING)
+        except ImportError:
+            pass
+        try:
+            with open(path, encoding='utf-8') as fh:
+                return json.load(fh).get('entries') or []
+        except (OSError, ValueError, AttributeError):
+            return []
+    atomic_write_json(path, {'ts': time.time(), 'entries': entries})
     return entries

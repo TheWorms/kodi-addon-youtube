@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Service de fond : relais HLS local (SponsorBlock sans coupure) et
 rafraîchissement régulier du flux des abonnements (widgets instantanés)."""
+import threading
 import time
 
 import xbmc
@@ -28,6 +29,27 @@ def refresh_feed(profile):
     return widgets.feed_ttl(addon)
 
 
+def _subs_changed(profile):
+    """Abonnement ajouté ou retiré depuis le dernier rafraîchissement : les
+    widgets lisent le cache, il faut donc le refaire tout de suite."""
+    try:
+        db = Storage(profile)
+        try:
+            ids = [s['channel_id'] for s in db.list_subs()]
+        finally:
+            db.close()
+    except Exception:
+        return False
+    return bool(ids) and not feed.cache_matches(profile, ids)
+
+
+def _safe_refresh(profile):
+    try:
+        refresh_feed(profile)
+    except Exception as exc:  # le relais ne doit jamais tomber à cause du flux
+        xbmc.log('[wtube] rafraîchissement du flux : %s' % exc, xbmc.LOGWARNING)
+
+
 def run():
     relay = Relay()
     port = relay.start()
@@ -40,15 +62,19 @@ def run():
     profile = xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo('profile'))
     monitor = xbmc.Monitor()
     next_refresh = time.time() + 20  # laisse Kodi finir de démarrer
+    worker = None
     while not monitor.waitForAbort(15):
-        if time.time() >= next_refresh:
-            try:
-                ttl = refresh_feed(profile)
-            except Exception as exc:  # le relais ne doit jamais tomber à cause du flux
-                xbmc.log('[wtube] rafraîchissement du flux : %s' % exc, xbmc.LOGWARNING)
-                ttl = 900
-            next_refresh = time.time() + ttl
-    home.clearProperty(PROPERTY)
+        # Rafraîchissement dans un fil à part : la boucle reste réactive à
+        # l'arrêt de Kodi même si YouTube répond lentement (429, VPN).
+        due = time.time() >= next_refresh or _subs_changed(profile)
+        if due and (worker is None or not worker.is_alive()):
+            worker = threading.Thread(target=_safe_refresh, args=(profile,), daemon=True)
+            worker.start()
+            next_refresh = time.time() + widgets.feed_ttl(xbmcaddon.Addon())
+    # N'efface la propriété que si elle désigne encore ce relais (une nouvelle
+    # instance du service, après une mise à jour, a pu en publier une autre).
+    if port and home.getProperty(PROPERTY) == str(port):
+        home.clearProperty(PROPERTY)
     relay.stop()
 
 

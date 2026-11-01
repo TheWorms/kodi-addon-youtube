@@ -19,10 +19,19 @@ def _migrate_legacy(profile_dir, path):
     """Reprend abonnements, historique, favoris et reprises de l'ancien addon."""
     legacy = os.path.join(os.path.dirname(os.path.normpath(profile_dir)), LEGACY_ID, LEGACY_DB)
     if os.path.isfile(legacy):
+        # Copie puis lien : si plusieurs processus migrent en même temps, un
+        # seul gagne et aucun n'écrase une base déjà ouverte par un autre.
+        tmp = '%s.%d.migrate' % (path, os.getpid())
         try:
-            shutil.copy2(legacy, path)
+            shutil.copy2(legacy, tmp)
+            os.link(tmp, path)
         except OSError:
             pass
+        finally:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
 
 
 class Storage:
@@ -31,8 +40,13 @@ class Storage:
         path = os.path.join(profile_dir, 'wtube.db')
         if not os.path.exists(path):
             _migrate_legacy(profile_dir, path)
-        self._db = sqlite3.connect(path)
+        # Service, interface, widgets et lecture ouvrent la base en même temps
+        self._db = sqlite3.connect(path, timeout=15)
         self._db.row_factory = sqlite3.Row
+        try:
+            self._db.execute('PRAGMA journal_mode=WAL')
+        except sqlite3.Error:
+            pass  # base verrouillée à l'instant : le mode sera posé à la prochaine ouverture
         self._db.executescript(
             """
             CREATE TABLE IF NOT EXISTS subs (

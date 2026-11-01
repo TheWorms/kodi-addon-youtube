@@ -11,6 +11,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
+from .utils import atomic_write_json
+
 FEED_URL = 'https://www.youtube.com/feeds/videos.xml?channel_id={}'
 NS = {
     'a': 'http://www.w3.org/2005/Atom',
@@ -101,44 +103,102 @@ def fetch_all(channel_ids, max_workers=4, previous=None):
 CACHE_FILE = 'feed_cache.json'
 
 
+LOCK_FILE = 'feed_cache.lock'
+LOCK_STALE = 180     # secondes : verrou abandonné (processus tué) au-delà
+RETRY_AFTER = 300    # secondes : après un refus général, nouvel essai dans 5 min
+
+
+def _log(msg):
+    try:
+        import xbmc
+        xbmc.log('[wtube] nouveautés : %s' % msg, xbmc.LOGWARNING)
+    except ImportError:
+        pass
+
+
+def _lock(cache_dir):
+    """Un seul processus interroge YouTube à la fois (service, interface et
+    chaque widget sont des processus distincts) ; les autres servent le cache."""
+    path = os.path.join(cache_dir, LOCK_FILE)
+    try:
+        os.makedirs(cache_dir, exist_ok=True)
+        if time.time() - os.path.getmtime(path) > LOCK_STALE:
+            os.remove(path)
+    except OSError:
+        pass
+    try:
+        os.close(os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+        return path
+    except OSError:
+        return None
+
+
+def _read_cache(cache_dir):
+    try:
+        with open(os.path.join(cache_dir, CACHE_FILE), encoding='utf-8') as fh:
+            data = json.load(fh)
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError):
+        return None
+
+
+def cached_entries(cache_dir, channel_ids):
+    """Entrées du cache pour ces chaînes, quel que soit leur âge ; None s'il
+    n'y a pas encore de cache (les widgets ne doivent pas attendre YouTube)."""
+    data = _read_cache(cache_dir)
+    if data is None:
+        return None
+    wanted = set(channel_ids)
+    return [e for e in data.get('entries') or [] if e.get('channel_id') in wanted]
+
+
+def cache_matches(cache_dir, channel_ids):
+    """Le cache couvre-t-il exactement ces chaînes ? (abonnement ajouté/retiré)"""
+    data = _read_cache(cache_dir)
+    return data is not None and data.get('ids') == sorted(set(channel_ids))
+
+
 def fetch_all_cached(channel_ids, cache_dir, ttl=900, force=False):
     """fetch_all avec un cache disque partagé (interface, widgets, service).
 
     Le service le rafraîchit en arrière-plan : les widgets s'affichent sans
-    interroger YouTube à chaque passage sur l'accueil du skin.
+    interroger YouTube à chaque passage sur l'accueil du skin. Si YouTube
+    refuse (HTTP 429, VPN), les vidéos déjà connues sont conservées.
     """
     ids = sorted(set(channel_ids))
+    wanted = set(ids)
     path = os.path.join(cache_dir, CACHE_FILE)
-    previous = []
+    previous, fresh = [], False
     try:
         with open(path, encoding='utf-8') as fh:
             data = json.load(fh)
         previous = data.get('entries') or []
-        if not force and data.get('ids') == ids and time.time() - data.get('ts', 0) < ttl:
-            return previous
-    except (OSError, ValueError, KeyError):
+        fresh = data.get('ids') == ids and time.time() - data.get('ts', 0) < ttl
+    except (OSError, ValueError, KeyError, AttributeError):
         pass
-    entries, failed = fetch_all(ids, previous=previous)
-    if failed:
+    if fresh and not force:
+        return previous
+    lock = _lock(cache_dir)
+    if lock is None:  # un autre processus rafraîchit déjà : cache actuel
+        return [e for e in previous if e.get('channel_id') in wanted]
+    try:
+        entries, failed = fetch_all(ids, previous=previous)
+        if failed:
+            _log('%d chaîne(s) sur %d refusée(s) par YouTube, anciennes vidéos conservées' % (failed, len(ids)))
+        if ids and failed == len(ids):
+            # Tout refusé : anciennes vidéos gardées, nouvel essai dans 5 min
+            # seulement (sinon chaque widget relancerait toutes les requêtes).
+            entries = [e for e in previous if e.get('channel_id') in wanted]
+            stamp = time.time() - max(0, ttl - RETRY_AFTER)
+        else:
+            stamp = time.time()
+        atomic_write_json(path, {'ts': stamp, 'ids': ids, 'entries': entries})
+        return entries
+    finally:
         try:
-            import xbmc
-            xbmc.log('[wtube] nouveautés : %d chaîne(s) sur %d refusée(s) par YouTube, anciennes vidéos conservées'
-                     % (failed, len(ids)), xbmc.LOGWARNING)
-        except ImportError:
-            pass
-    if failed == len(ids) and previous:
-        # Tout refusé : on garde le cache tel quel ; nouvel essai au prochain passage
-        return [e for e in previous if e.get('channel_id') in set(ids)]
-    if entries or not ids:
-        tmp = '%s.%d.tmp' % (path, os.getpid())
-        try:
-            os.makedirs(cache_dir, exist_ok=True)
-            with open(tmp, 'w', encoding='utf-8') as fh:
-                json.dump({'ts': time.time(), 'ids': ids, 'entries': entries}, fh)
-            os.replace(tmp, path)
+            os.remove(lock)
         except OSError:
             pass
-    return entries
 
 
 def without_shorts(entries, hide=True):

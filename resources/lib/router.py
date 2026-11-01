@@ -8,6 +8,7 @@ import xbmcgui
 import xbmcplugin
 import xbmcvfs
 
+import sqlite3
 import threading
 
 from . import feed, hlsproxy, streamcache, ui, upnext, widgets
@@ -21,6 +22,8 @@ RESUME_MIN = 15          # en dessous, on repart du début
 RESUME_END_MARGIN = 30   # dans les 30 dernières secondes : vidéo considérée comme vue
 NEXT_ASK_TIMEOUT = 15    # secondes avant que la question « vidéo suivante » se ferme (= arrêt)
 PRELOAD_BEFORE = 90      # secondes avant la fin : résolution de la vidéo suivante
+PLAY_FAILED = 'wtube.play_failed'  # propriété Home : vidéo dont la lecture a échoué
+NEXT_START_TIMEOUT = 25  # secondes d'attente maximum du démarrage de la vidéo enchaînée
 REWIND_FROM = 3.0        # démarrage HLS au-delà : premier segment sauté, on revient à 0:00
 FADE_BEFORE = 0.6        # secondes avant la fin : début du fondu au noir (court : ne pas manger la fin)
 
@@ -45,10 +48,10 @@ class _NextHelper:
         if self.preload_on and self.preload is None and remaining <= PRELOAD_BEFORE:
             self.preload = threading.Thread(target=self._preload, daemon=True)
             self.preload.start()
+        if self.fade is not None and remaining > FADE_BEFORE + 1:
+            self.cancel()  # retour en arrière pendant le fondu : image et son rétablis
         if self.fade_on and self.mode == 2 and self.fade is None and 0 < remaining <= FADE_BEFORE:
-            from .transition import Fade
-            self.fade = Fade()
-            self.fade.out(FADE_BEFORE, self.next)
+            self.start_fade()
 
     def _preload(self):
         vid = self.next['id']
@@ -66,7 +69,7 @@ class _NextHelper:
         if self.fade_on and self.fade is None:
             from .transition import Fade
             self.fade = Fade()
-            self.fade.out(0.6, self.next)
+            self.fade.out(FADE_BEFORE, self.next)
 
     def cancel(self):
         if self.fade is not None:
@@ -160,7 +163,7 @@ class Router:
             handler()
         except ExtractorError as exc:
             log('erreur extraction (%s) : %s' % (action, exc), xbmc.LOGERROR)
-            blocked = 'not a bot' in str(exc) or 'formats' in str(exc).lower()
+            blocked = 'not a bot' in str(exc) or 'format' in str(exc).lower()
             if action == 'play' and blocked and not self.ex.js_runtime:
                 self._offer_js_install()
             elif action == 'play':
@@ -229,8 +232,13 @@ class Router:
         self._end(content='files')
 
     def _feed(self):
+        """Nouveautés pour les widgets et la liste classique : le cache tenu à
+        jour par le service, quel que soit son âge ; YouTube n'est interrogé
+        ici que s'il n'existe pas encore (premier lancement)."""
         subs = [s['channel_id'] for s in self.db.list_subs()]
-        entries = feed.fetch_all_cached(subs, self._profile, widgets.feed_ttl(self.addon)) if subs else []
+        entries = feed.cached_entries(self._profile, subs) if subs else []
+        if entries is None:
+            entries = feed.fetch_all_cached(subs, self._profile, widgets.feed_ttl(self.addon))
         return feed.without_shorts(entries, widgets.hide_shorts(self.addon))
 
     def _widget(self, entries, limit=30):
@@ -385,7 +393,6 @@ class Router:
         if not ids:
             self.notify(L(30037))
             return self._end(ok=False)
-        # TODO : mettre en cache (fichier + durée de vie) pour ne pas refaire N requêtes par page
         everything = self._feed()
         start = (self.page - 1) * self.page_size
         entries = everything[start:start + self.page_size]
@@ -430,7 +437,11 @@ class Router:
     # lecture -------------------------------------------------------------
     def _resume_choice(self, video_id, ask=True):
         """Position de départ (secondes), 0 = début, None = lecture annulée."""
-        saved = self.db.get_resume(video_id)
+        try:
+            saved = self.db.get_resume(video_id)
+        except sqlite3.Error as exc:
+            log('reprise illisible : %s' % exc, xbmc.LOGWARNING)
+            saved = None
         try:  # lecture texte : getSettingInt peu fiable sur les listes (cf. Radio)
             mode = int(self.addon.getSetting('resume_mode') or 0)  # 0 demander, 1 toujours, 2 jamais
         except ValueError:
@@ -451,6 +462,56 @@ class Router:
 
     def a_play(self):
         video_id = self.params['id']
+        home = xbmcgui.Window(10000)
+        home.clearProperty(PLAY_FAILED)
+        player = xbmc.Player()
+        # Vidéo en cours avant celle-ci : le suivi ne doit pas s'y accrocher
+        # (Kodi la laisse tourner jusqu'au démarrage de la nouvelle).
+        try:
+            previous_file = player.getPlayingFile() if player.isPlayingVideo() else None
+        except RuntimeError:
+            previous_file = None
+        resolved = False
+        try:
+            prepared = self._prepare(video_id)
+            if prepared is None:  # lecture annulée (question de reprise)
+                xbmcplugin.setResolvedUrl(self.handle, False, xbmcgui.ListItem())
+                resolved = True
+                return
+            stream, item, start, segments, relayed = prepared
+            xbmcplugin.setResolvedUrl(self.handle, True, item)
+            resolved = True
+        except Exception:
+            # Toujours répondre à Kodi (sinon la roue d'attente tourne sans fin)
+            # et prévenir l'enchaînement en attente que cette vidéo a échoué.
+            if not resolved:
+                xbmcplugin.setResolvedUrl(self.handle, False, xbmcgui.ListItem())
+            home.setProperty(PLAY_FAILED, video_id)
+            raise
+        try:
+            self.db.add_history(video_id, stream.title, stream.channel, stream.channel_id,
+                                stream.thumb, stream.duration)
+        except sqlite3.Error as exc:  # base occupée : la lecture continue quand même
+            log('historique non enregistré : %s' % exc, xbmc.LOGWARNING)
+        if stream.is_live:
+            return
+        kick = (stream.manifest == 'hls' and not start
+                and self.addon.getSetting('hls_audio_kick') == 'true')  # désactivé par défaut depuis 0.6.12
+        mode = self._autoplay_mode()
+        helper = _NextHelper(self, video_id, mode) if mode else None
+        try:
+            ended = self._watch(video_id, [] if relayed else segments, kick,
+                                on_tick=helper.tick if helper else None,
+                                rewind=stream.manifest == 'hls' and not start,
+                                previous_file=previous_file)
+            if ended and helper:
+                self._play_next(video_id, helper)
+        finally:
+            if helper:
+                helper.cancel()  # image et volume toujours rétablis
+
+    def _prepare(self, video_id):
+        """Tout ce qui précède setResolvedUrl ; None si l'utilisateur annule."""
         chained = self.params.get('chain') == '1'
         if not chained and not upnext.is_fresh_for(upnext.load(self._profile), video_id):
             # Lancée depuis une liste classique ou un widget : on fige la suite de la liste.
@@ -460,16 +521,11 @@ class Router:
         else:
             start = self._resume_choice(video_id, ask=not chained)  # avant l'extraction : réponse immédiate
         if start is None:
-            xbmcplugin.setResolvedUrl(self.handle, False, xbmcgui.ListItem())
-            return
+            return None
         stream = streamcache.take(self._profile, video_id) if chained else None
         if stream is not None:
             log('%s : flux préchargé, démarrage immédiat' % video_id)
-        try:
-            stream = stream or self.ex.resolve(video_id)
-        except ExtractorError:
-            xbmcplugin.setResolvedUrl(self.handle, False, xbmcgui.ListItem())
-            raise
+        stream = stream or self.ex.resolve(video_id)
         segments = []
         if self.addon.getSettingBool('sponsorblock') and not stream.is_live:
             from .sponsorblock import get_segments
@@ -488,24 +544,7 @@ class Router:
         item = ui.playable_item(stream)
         if start:
             item.setProperty('StartOffset', '%.1f' % start)
-        xbmcplugin.setResolvedUrl(self.handle, True, item)
-        self.db.add_history(video_id, stream.title, stream.channel, stream.channel_id,
-                            stream.thumb, stream.duration)
-        if stream.is_live:
-            return
-        kick = (stream.manifest == 'hls' and not start
-                and self.addon.getSetting('hls_audio_kick') == 'true')  # désactivé par défaut depuis 0.6.12
-        mode = self._autoplay_mode()
-        helper = _NextHelper(self, video_id, mode) if mode else None
-        try:
-            ended = self._watch(video_id, [] if relayed else segments, kick,
-                                on_tick=helper.tick if helper else None,
-                                rewind=stream.manifest == 'hls' and not start and not stream.is_live)
-            if ended and helper:
-                self._play_next(video_id, helper)
-        finally:
-            if helper:
-                helper.cancel()  # image et volume toujours rétablis
+        return stream, item, start, segments, relayed
 
     def _autoplay_mode(self):
         try:
@@ -535,30 +574,47 @@ class Router:
         helper.wait_preload()
         upnext.save(self._profile, nxt['id'], rest)
         log('enchaînement : %s' % nxt['id'])
+        home = xbmcgui.Window(10000)
+        home.clearProperty(PLAY_FAILED)
         xbmc.executebuiltin('PlayMedia(%s)' % self.url(action='play', id=nxt['id'], chain='1'))
         if helper.fade is not None:
-            # Le voile reste noir jusqu'au démarrage effectif de la suivante.
+            # L'écran « À suivre » reste affiché jusqu'au démarrage effectif de
+            # la suivante, ou jusqu'à l'échec de sa lecture (pas d'attente à vide).
             waited = 0.0
-            while waited < 40 and not monitor.abortRequested():
+            while waited < NEXT_START_TIMEOUT and not monitor.abortRequested():
+                if home.getProperty(PLAY_FAILED) == nxt['id']:
+                    log('%s : lecture impossible, fin de l\'enchaînement' % nxt['id'])
+                    break
                 try:
                     if player.isPlayingVideo() and player.getTime() > 0.3:
-                        break
+                        helper.fade.into()
+                        helper.fade = None
+                        return
                 except RuntimeError:
                     pass
                 monitor.waitForAbort(0.25)
                 waited += 0.25
-            helper.fade.into()
-            helper.fade = None
+            helper.cancel()  # échec ou délai dépassé : image et volume rétablis aussitôt
 
-    def _watch(self, video_id, skip_segments, kick_audio, on_tick=None, rewind=False):
+    def _watch(self, video_id, skip_segments, kick_audio, on_tick=None, rewind=False, previous_file=None):
         """Suit la lecture : position de reprise, saut SponsorBlock (ancienne
-        méthode) et relance du son au démarrage des flux HLS."""
+        méthode) et relance du son au démarrage des flux HLS.
+
+        previous_file : vidéo qui jouait avant celle-ci ; on attend qu'elle ait
+        laissé la place, sinon le suivi s'accrocherait à la mauvaise vidéo.
+        """
         monitor, player = xbmc.Monitor(), _EndWatcher()
         waited = 0.0
-        while not player.isPlayingVideo():  # attendre le démarrage de la lecture
+        while True:  # attendre le démarrage de cette lecture
+            try:
+                if player.isPlayingVideo() and (previous_file is None or player.getPlayingFile() != previous_file):
+                    break
+            except RuntimeError:
+                pass
             if monitor.waitForAbort(0.5) or waited > 30:
                 return False
             waited += 0.5
+        player.ended = False  # un rappel de fin venu de la vidéo précédente ne compte pas
         try:
             playing_file = player.getPlayingFile()
         except RuntimeError:
@@ -610,7 +666,10 @@ class Router:
         return player.ended or bool(total and position >= total - 3)
 
     def _save_resume(self, video_id, position, total):
-        if total and position > total - RESUME_END_MARGIN:
-            self.db.clear_resume(video_id)  # vue jusqu'au bout
-        elif position >= RESUME_MIN:
-            self.db.set_resume(video_id, position, total)
+        try:
+            if total and position > total - RESUME_END_MARGIN:
+                self.db.clear_resume(video_id)  # vue jusqu'au bout
+            elif position >= RESUME_MIN:
+                self.db.set_resume(video_id, position, total)
+        except sqlite3.Error as exc:  # base occupée : le suivi de lecture continue
+            log('position de reprise non enregistrée : %s' % exc, xbmc.LOGWARNING)

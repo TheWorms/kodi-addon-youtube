@@ -339,9 +339,6 @@ class MainWindow(xbmcgui.WindowXML):
         self.show('home', focus=False)
         self._run(self._load_home)
 
-    def onClose(self):
-        self._closed.set()
-
     def _quit(self):
         self.user_quit = True
         self._closed.set()
@@ -545,7 +542,10 @@ class MainWindow(xbmcgui.WindowXML):
 
     def _load_more(self, cid):
         if cid in RESULTS.values():
-            self._run(self._search, self.search_state[self.filter]['page'] + 1)
+            state = self.search_state[self.filter]
+            if state.get('query') != self.query:
+                return  # une nouvelle recherche est en cours : pas de mélange des résultats
+            self._run(self._search, state['page'] + 1)
         elif cid == CH_GRID:
             self._run(self._load_channel, self.ch.get('page', 1) + 1)
         elif cid == PL_GRID:
@@ -638,7 +638,8 @@ class MainWindow(xbmcgui.WindowXML):
     # --- file d'attente / favoris ------------------------------------------
     @staticmethod
     def _queue_item(video_id, title, thumb):
-        url = 'plugin://%s/?action=play&id=%s' % (ADDON_ID, video_id)
+        # chain=1 : la file Kodi gère la suite, l'enchaînement de Wtube s'efface
+        url = 'plugin://%s/?action=play&id=%s&chain=1' % (ADDON_ID, video_id)
         item = xbmcgui.ListItem(title or video_id)
         item.setArt({'thumb': thumb or '', 'icon': thumb or ''})
         item.setProperty('IsPlayable', 'true')
@@ -677,11 +678,11 @@ class MainWindow(xbmcgui.WindowXML):
     def _play_all(self, videos):
         """Lit la liste dans la file Kodi : Suivant / Précédent de la télécommande
         passent d'une vidéo à l'autre, sans question de reprise."""
+        upnext.save(PROFILE, '', [])  # la file Kodi remplace la liste « à suivre »
         queue = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
         queue.clear()
         for v in videos:
-            url, item = self._queue_item(v['id'], v.get('title'), v.get('thumb'))
-            queue.add(url + '&chain=1', item)
+            queue.add(*self._queue_item(v['id'], v.get('title'), v.get('thumb')))
         xbmc.Player().play(queue)
 
     def _play_playlist(self, playlist_id):
@@ -1120,6 +1121,7 @@ def open_main():
         win = MainWindow(XML_FILE, ADDON_PATH, 'Default', '1080i')
         home.setProperty(GUARD_PROP, '1')
         win.doModal()
+        win._closed.set()  # plus aucun chargement en cours n'écrit dans la fenêtre
         user_quit = win.user_quit
         del win
     finally:

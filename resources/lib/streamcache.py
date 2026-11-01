@@ -10,6 +10,7 @@ import os
 import time
 
 from .extractor import Stream
+from .utils import atomic_write_json
 
 FILE = 'next_stream.json'
 TTL = 1800  # secondes
@@ -20,14 +21,7 @@ def _path(profile):
 
 
 def save(profile, video_id, stream):
-    data = {'id': video_id, 'ts': time.time(), 'stream': dataclasses.asdict(stream)}
-    tmp = _path(profile) + '.tmp'
-    try:
-        with open(tmp, 'w', encoding='utf-8') as fh:
-            json.dump(data, fh)
-        os.replace(tmp, _path(profile))
-    except (OSError, TypeError, ValueError):
-        pass
+    atomic_write_json(_path(profile), {'id': video_id, 'ts': time.time(), 'stream': dataclasses.asdict(stream)})
 
 
 def take(profile, video_id):

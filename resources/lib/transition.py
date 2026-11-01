@@ -84,27 +84,38 @@ class Fade:
 
     def into(self, seconds=0.8):
         """Le voile disparaît en fondu, le volume revient à sa valeur."""
-        if self._thread is not None:
-            self._thread.join(3)
-            self._thread = None
-        if self.veil is not None:
-            left = MIN_VISIBLE - (time.time() - self.shown_at)
-            if left > 0:
-                xbmc.sleep(int(left * 1000))
-            self.veil.close()  # animation de fermeture (fondu) définie dans le XML
-            self.veil = None
-        if self.volume:
-            self._ramp(0, self.volume, seconds)
-            self.volume = None
+        try:
+            self._stop_ramp()
+            if self.veil is not None:
+                left = MIN_VISIBLE - (time.time() - self.shown_at)
+                if left > 0:
+                    xbmc.Monitor().waitForAbort(left)  # pas d'attente si Kodi s'arrête
+                self._close_veil()
+            if self.volume:
+                self._ramp(0, self.volume, seconds)
+                self.volume = None
+        finally:
+            self.cancel()  # quoi qu'il arrive : volume rétabli, voile fermé
 
     def cancel(self):
-        """Rétablit immédiatement l'image et le volume."""
+        """Rétablit immédiatement le volume, puis ferme le voile."""
+        self._stop_ramp()
+        try:
+            if self.volume:
+                _set_volume(self.volume)
+        finally:
+            self.volume = None
+            self._close_veil()
+
+    def _stop_ramp(self):
         if self._thread is not None:
             self._thread.join(3)
             self._thread = None
-        if self.veil is not None:
-            self.veil.close()
-            self.veil = None
-        if self.volume:
-            _set_volume(self.volume)
-            self.volume = None
+
+    def _close_veil(self):
+        veil, self.veil = self.veil, None
+        if veil is not None:
+            try:
+                veil.close()  # animation de fermeture (fondu) définie dans le XML
+            except RuntimeError:
+                pass

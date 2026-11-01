@@ -83,3 +83,29 @@ def background_art(video_id):
     elif mode == 2:
         art['fanart'] = addon_fanart
     return art
+
+
+def atomic_write_json(path, data):
+    """Écrit un fichier JSON partagé entre processus sans jamais laisser un
+    lecteur tomber sur un fichier à moitié écrit (fichier temporaire unique,
+    puis remplacement atomique). Retourne False en cas d'échec."""
+    import json
+    import os
+    import tempfile
+    folder = os.path.dirname(path) or '.'
+    try:
+        os.makedirs(folder, exist_ok=True)
+        fd, tmp = tempfile.mkstemp(dir=folder, prefix='.tmp-', suffix='.json')
+    except OSError:
+        return False
+    try:
+        with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+            json.dump(data, fh)
+        os.replace(tmp, path)
+        return True
+    except (OSError, TypeError, ValueError):
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        return False

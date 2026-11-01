@@ -22,6 +22,10 @@ PORT_BASE = 52341
 PORT_TRIES = 10
 PROPERTY = 'wtube.relay_port'  # propriété de la fenêtre Home (10000)
 MIME = 'application/vnd.apple.mpegurl'
+# Le relais ne va chercher que des playlists YouTube : ce n'est pas un proxy
+# ouvert (une page web locale ne peut pas s'en servir pour lire le réseau).
+ALLOWED_HOSTS = ('.googlevideo.com', '.youtube.com')
+MAX_PLAYLIST = 8 * 1024 * 1024  # octets ; une playlist de plusieurs heures fait ~1 Mo
 
 _URI_RE = re.compile(r'URI="([^"]+)"')
 # Balises qui décrivent un seul segment (elles disparaissent avec lui)
@@ -168,9 +172,34 @@ def filter_media(text, base_url, ranges):
     return '\n'.join(out) + '\n', dropped, removed
 
 
+def allowed_upstream(url):
+    parts = urlsplit(url)
+    host = (parts.hostname or '').lower()
+    return parts.scheme == 'https' and any(host.endswith(s) or host == s[1:] for s in ALLOWED_HOSTS)
+
+
+def _fetch(url, user_agent):
+    """Playlist YouTube (texte, URL finale) ; ValueError si refusée."""
+    import requests
+    if not allowed_upstream(url):
+        raise ValueError('adresse refusée : %s' % urlsplit(url).hostname)
+    headers = {'User-Agent': user_agent} if user_agent else None
+    with requests.get(url, timeout=15, headers=headers, stream=True) as resp:
+        resp.raise_for_status()
+        if not allowed_upstream(resp.url):  # redirection hors de YouTube
+            raise ValueError('redirection refusée : %s' % urlsplit(resp.url).hostname)
+        data = b''
+        for chunk in resp.iter_content(65536):
+            data += chunk
+            if len(data) > MAX_PLAYLIST:
+                raise ValueError('playlist trop grande')
+        return data.decode('utf-8', 'replace'), resp.url
+
+
 # --- serveur -------------------------------------------------------------------
 class _Handler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
+    timeout = 30  # une connexion inactive ne garde pas un fil indéfiniment
 
     def log_message(self, fmt, *args):
         pass
@@ -188,8 +217,11 @@ class _Handler(BaseHTTPRequestHandler):
         self.do_GET(head_only=True)
 
     def do_GET(self, head_only=False):
-        import requests
-
+        # Seules les requêtes adressées à 127.0.0.1 sont servies (pas de
+        # « DNS rebinding » depuis une page web ouverte sur la même machine).
+        host = (self.headers.get('Host') or '').split(':')[0]
+        if host not in ('127.0.0.1', 'localhost'):
+            return self._reply(403, head_only=head_only)
         parts = urlsplit(self.path)
         if parts.path != '/hls.m3u8':
             return self._reply(404, head_only=head_only)
@@ -200,29 +232,24 @@ class _Handler(BaseHTTPRequestHandler):
         except (KeyError, ValueError):
             return self._reply(400, head_only=head_only)
         ranges = decode_ranges(query.get('s'))
-
         try:
-            resp = requests.get(upstream, timeout=15,
-                                headers={'User-Agent': user_agent} if user_agent else None)
-            resp.raise_for_status()
-        except requests.RequestException as exc:
-            _log('échec du téléchargement de la playlist : %s' % exc, warning=True)
+            text, base = _fetch(upstream, user_agent)
+            if '#EXT-X-STREAM-INF' in text:
+                port = self.server.server_address[1]
+
+                def child(url):
+                    return 'http://127.0.0.1:%d/hls.m3u8?%s' % (port, urlencode(dict(query, u=b64e(url))))
+
+                body = rewrite_master(text, base, child)
+                _log('manifeste : %d variantes, %d pistes audio séparées' % (
+                    text.count('#EXT-X-STREAM-INF'), text.count('TYPE=AUDIO')))
+            else:
+                body, n, secs = filter_media(text, base, ranges)
+                if n:
+                    _log('%d segments retirés (%.1f s)' % (n, secs))
+        except Exception as exc:  # réseau, adresse refusée, playlist mal formée
+            _log('playlist non servie : %s' % exc, warning=True)
             return self._reply(502, head_only=head_only)
-
-        text, base = resp.text, resp.url
-        if '#EXT-X-STREAM-INF' in text:
-            port = self.server.server_address[1]
-
-            def child(url):
-                return 'http://127.0.0.1:%d/hls.m3u8?%s' % (port, urlencode(dict(query, u=b64e(url))))
-
-            body = rewrite_master(text, base, child)
-            _log('manifeste : %d variantes, %d pistes audio séparées' % (
-                text.count('#EXT-X-STREAM-INF'), text.count('TYPE=AUDIO')))
-        else:
-            body, n, secs = filter_media(text, base, ranges)
-            if n:
-                _log('%d segments retirés (%.1f s)' % (n, secs))
         self._reply(200, body.encode('utf-8'), head_only=head_only)
 
 

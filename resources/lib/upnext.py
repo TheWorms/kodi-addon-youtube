@@ -12,6 +12,8 @@ from urllib.parse import parse_qs, urlparse
 
 import xbmc
 
+from .utils import atomic_write_json
+
 ADDON_ID = 'plugin.video.wtube'
 FILE = 'upnext.json'
 MAX_ITEMS = 50
@@ -23,12 +25,8 @@ def _path(profile):
 
 
 def save(profile, current, following, from_gui=False):
-    data = {'current': current, 'next': list(following)[:MAX_ITEMS], 'ts': time.time(), 'gui': from_gui}
-    try:
-        with open(_path(profile), 'w', encoding='utf-8') as f:
-            json.dump(data, f)
-    except OSError:
-        pass
+    atomic_write_json(_path(profile), {'current': current, 'next': list(following)[:MAX_ITEMS],
+                                       'ts': time.time(), 'gui': from_gui})
 
 
 def load(profile):
