@@ -22,21 +22,30 @@ NS = {
 }
 
 
+RETRY_STATUS = (404, 429, 500, 502, 503)
+ATTEMPTS = 3
+
+
 def fetch_channel(channel_id, timeout=10):
-    """Retourne les ~15 dernières vidéos d'une chaîne, ou None en cas d'erreur
-    (YouTube limite les requêtes, surtout derrière un VPN : HTTP 429)."""
+    """Retourne les ~15 dernières vidéos d'une chaîne, ou None en cas d'erreur.
+
+    Le flux RSS de YouTube répond au hasard « 404 » pour des chaînes qui
+    existent (constaté le 01/11/2026 : la même chaîne passe à l'essai
+    suivant) et « 429 » derrière un VPN : quelques essais espacés.
+    """
     root = None
-    for attempt in range(2):
+    for attempt in range(ATTEMPTS):
         try:
             resp = requests.get(FEED_URL.format(channel_id), timeout=timeout)
-            if resp.status_code == 429 and attempt == 0:
-                time.sleep(2)  # un seul nouvel essai, un peu plus tard
+            if resp.status_code in RETRY_STATUS and attempt < ATTEMPTS - 1:
+                time.sleep(1.5 * (attempt + 1))
                 continue
             resp.raise_for_status()
             root = ET.fromstring(resp.content)
             break
         except (requests.RequestException, ET.ParseError):
-            return None
+            if attempt == ATTEMPTS - 1:
+                return None
     if root is None:
         return None
 
@@ -72,11 +81,13 @@ def fetch_channel(channel_id, timeout=10):
     return out
 
 
-def fetch_all(channel_ids, max_workers=4, previous=None):
+def fetch_all(channel_ids, max_workers=4, previous=None, fallback=None):
     """Fusionne les flux de toutes les chaînes, du plus récent au plus ancien.
 
     previous : entrées déjà connues ; une chaîne dont le flux est refusé garde
     ses anciennes vidéos au lieu de disparaître des nouveautés.
+    fallback : fonction(channel_id) -> entrées, essayée pour les chaînes que
+    le RSS refuse encore (page de la chaîne via yt-dlp, plus lente).
     Retourne (entrées, nombre de chaînes en échec).
     """
     if not channel_ids:
@@ -89,6 +100,11 @@ def fetch_all(channel_ids, max_workers=4, previous=None):
     for e in previous or []:
         old.setdefault(e.get('channel_id'), []).append(e)
     for i, (cid, entries) in enumerate(zip(channel_ids, results)):
+        if entries is None and fallback is not None:
+            try:
+                entries = results[i] = fallback(cid) or None
+            except Exception:
+                entries = None
         if entries is None:
             failed += 1
             results[i] = old.get(cid, [])
@@ -160,7 +176,7 @@ def cache_matches(cache_dir, channel_ids):
     return data is not None and data.get('ids') == sorted(set(channel_ids))
 
 
-def fetch_all_cached(channel_ids, cache_dir, ttl=900, force=False):
+def fetch_all_cached(channel_ids, cache_dir, ttl=900, force=False, fallback=None):
     """fetch_all avec un cache disque partagé (interface, widgets, service).
 
     Le service le rafraîchit en arrière-plan : les widgets s'affichent sans
@@ -184,7 +200,7 @@ def fetch_all_cached(channel_ids, cache_dir, ttl=900, force=False):
     if lock is None:  # un autre processus rafraîchit déjà : cache actuel
         return [e for e in previous if e.get('channel_id') in wanted]
     try:
-        entries, failed = fetch_all(ids, previous=previous)
+        entries, failed = fetch_all(ids, previous=previous, fallback=fallback)
         if failed:
             _log('%d chaîne(s) sur %d refusée(s) par YouTube, anciennes vidéos conservées' % (failed, len(ids)))
         if ids and failed == len(ids):

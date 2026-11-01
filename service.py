@@ -24,9 +24,26 @@ def refresh_feed(profile):
     finally:
         db.close()
     if ids:
-        feed.fetch_all_cached(ids, profile, widgets.feed_ttl(addon), force=True)
+        feed.fetch_all_cached(ids, profile, widgets.feed_ttl(addon), force=True,
+                              fallback=_channel_fallback(profile, addon))
         xbmcgui.Window(10000).setProperty(FEED_PROPERTY, str(int(time.time())))
     return widgets.feed_ttl(addon)
+
+
+def _channel_fallback(profile, addon):
+    """Secours pour les chaînes dont le RSS est refusé : page de la chaîne."""
+    state = {}
+
+    def fallback(channel_id):
+        if 'ex' not in state:
+            from resources.lib.extractor import DEFAULT_CLIENTS, Extractor, find_js_runtime
+            state['ex'] = Extractor(profile, js_runtime=find_js_runtime(profile, addon.getSetting('js_runtime')),
+                                    clients=addon.getSetting('yt_clients') or DEFAULT_CLIENTS)
+        entries = state['ex'].channel_feed(channel_id)
+        xbmc.log('[wtube] nouveautés : %s lue sur la page de la chaîne (%d vidéos)' % (channel_id, len(entries)),
+                 xbmc.LOGINFO)
+        return entries
+    return fallback
 
 
 def _subs_changed(profile):

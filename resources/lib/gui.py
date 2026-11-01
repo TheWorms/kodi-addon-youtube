@@ -816,7 +816,8 @@ class MainWindow(xbmcgui.WindowXML):
             db.close()
         addon = xbmcaddon.Addon(ADDON_ID)
         entries = feed.fetch_all_cached([s['channel_id'] for s in subs], PROFILE,
-                                        widgets.feed_ttl(addon)) if subs else []
+                                        widgets.feed_ttl(addon),
+                                        fallback=lambda cid: self.ex.channel_feed(cid)) if subs else []
         entries = feed.without_shorts(entries, widgets.hide_shorts(addon))
         if self._stale('home', gen):
             return

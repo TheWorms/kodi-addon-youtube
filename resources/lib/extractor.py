@@ -402,6 +402,29 @@ class Extractor:
         except ExtractorError:
             return {}, []
 
+    def channel_feed(self, channel_id, size=15):
+        """Dernières vidéos d'une chaîne au format du flux RSS (feed.py), lues
+        sur la page de la chaîne : secours quand le RSS de YouTube refuse.
+        Dates approximatives (« il y a 2 jours ») converties par yt-dlp."""
+        import datetime
+        info = self._extract('https://www.youtube.com/channel/%s/videos' % channel_id,
+                             extract_flat='in_playlist', noplaylist=False,
+                             playlist_items='1-%d' % size,
+                             extractor_args=dict(self._opts().get('extractor_args') or {},
+                                                 youtubetab={'approximate_date': ['']}))
+        name = info.get('channel') or info.get('uploader') or ''
+        out = []
+        for raw in info.get('entries') or []:
+            if not raw or not raw.get('id'):
+                continue
+            e = _normalize(raw)
+            ts = raw.get('timestamp') or raw.get('release_timestamp')
+            published = (datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).isoformat()
+                         if ts else '')
+            out.append(dict(e, kind='video', channel=e.get('channel') or name, channel_id=channel_id,
+                            published=published, short=False))
+        return out
+
     def channel_videos(self, channel, page=1, size=20):
         return self.channel_page(channel, page, size, 'videos')[1]
 
