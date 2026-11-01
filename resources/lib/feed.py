@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
+from . import direct
 from .utils import atomic_write_json
 
 FEED_URL = 'https://www.youtube.com/feeds/videos.xml?channel_id={}'
@@ -80,6 +81,7 @@ def fetch_all(channel_ids, max_workers=4, previous=None):
     """
     if not channel_ids:
         return [], 0
+    direct.ensure_host('www.youtube.com')  # option « YouTube hors du VPN »
     with ThreadPoolExecutor(max_workers=max_workers) as pool:  # 4 : moins de refus 429
         results = list(pool.map(fetch_channel, channel_ids))
     failed = 0

@@ -14,6 +14,8 @@ from urllib.parse import quote, urlencode
 
 import xbmc
 
+from . import direct
+
 # yt-dlp est embarqué dans resources/lib/vendor (absent du dépôt officiel Kodi).
 _VENDOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'vendor')
 if os.path.isdir(_VENDOR) and _VENDOR not in sys.path:
@@ -206,6 +208,7 @@ def _probe_hls(master_url, headers, max_height, timeout=6):
     from urllib.parse import urljoin
 
     def get(url, limit=None):
+        direct.ensure_url(url)  # option « YouTube hors du VPN » : route directe d'abord
         req = urllib.request.Request(url, headers=dict(headers))
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             if resp.status not in (200, 206):
@@ -243,6 +246,7 @@ def _probe(url, headers, timeout=6):
     de Kodi pour les flux qu'il refuse (constaté le 31/10/2026).
     """
     import urllib.request
+    direct.ensure_url(url)  # option « YouTube hors du VPN » : route directe d'abord
     req = urllib.request.Request(url, headers=dict(headers, Range='bytes=0-'))
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -337,6 +341,7 @@ class Extractor:
         return opts
 
     def _extract(self, url, **opts):
+        direct.ensure_host('www.youtube.com')
         try:
             with YoutubeDL(self._opts(**opts)) as ydl:
                 return ydl.extract_info(url, download=False)

@@ -3,7 +3,7 @@
 # Wtube — YouTube pour Kodi
 
 <!-- version:auto -->
-**Version : 0.6.18**
+**Version : 0.6.19**
 <!-- /version:auto -->
 
 Module Kodi pour regarder **YouTube sans compte et sans clé d'API Google**, avec une interface
@@ -82,6 +82,14 @@ première fois qu'une vidéo est bloquée.
 
 yt-dlp et son solveur `yt-dlp-ejs` sont **embarqués** dans l'addon (`resources/lib/vendor/`),
 ajoutés au moment du build à partir de [`vendor.txt`](vendor.txt).
+
+### YouTube hors du VPN
+
+YouTube freine fortement les adresses de VPN (refus « 429 », vérification anti-robot). Avec
+l'addon [ProtonVPN](https://github.com/TheWorms/kodi-addon-protonvpn) 0.5.13 ou plus, l'option
+**YouTube hors du VPN** fait sortir le trafic Google / YouTube par la connexion normale ; Wtube
+ajoute lui-même une route directe pour chaque serveur vidéo hébergé chez le fournisseur d'accès.
+Le reste du trafic reste dans le tunnel.
 
 ## Données et vie privée
 
