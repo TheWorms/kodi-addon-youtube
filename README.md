@@ -1,3 +1,7 @@
+<!-- logo:start -->
+<p align="center"><img src="resources/icon.png" alt="Logo" width="160"></p>
+<!-- logo:end -->
+
 **Français** · [English](readme.en.md)
 
 # Wtube — YouTube pour Kodi
