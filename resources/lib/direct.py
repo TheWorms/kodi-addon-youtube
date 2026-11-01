@@ -111,3 +111,51 @@ def ensure_url(url):
         ensure_host(urlsplit(url).hostname)
     except Exception:  # jamais bloquant pour la lecture
         pass
+
+
+# --- activation automatique de l'option dans l'addon ProtonVPN ------------------
+PROTONVPN = 'service.protonvpn.manager'
+PROTONVPN_MIN = (0, 5, 13)  # première version avec l'option « YouTube hors du VPN »
+AUTO_MARKER = 'protonvpn_bypass_auto'
+
+
+def _version(text):
+    out = []
+    for part in (text or '').split('.'):
+        digits = ''.join(ch for ch in part if ch.isdigit())
+        out.append(int(digits) if digits else 0)
+    return tuple(out)
+
+
+def auto_enable_protonvpn(profile, addon):
+    """Une seule fois : si l'addon ProtonVPN (>= 0.5.13) est installé, active
+    son option « YouTube hors du VPN ». Réglage de Wtube pour s'en passer ;
+    si l'utilisateur la désactive ensuite dans ProtonVPN, Wtube n'y touche plus.
+    Retourne True si l'option vient d'être activée."""
+    import os
+    if xbmc is None or addon.getSetting('vpn_auto_bypass') == 'false':
+        return False
+    marker = os.path.join(profile, AUTO_MARKER)
+    if os.path.exists(marker):
+        return False
+    if not xbmc.getCondVisibility('System.HasAddon(%s)' % PROTONVPN):
+        return False  # pas (encore) installé : on revérifiera au prochain démarrage
+    if _version(xbmc.getInfoLabel('System.AddonVersion(%s)' % PROTONVPN)) < PROTONVPN_MIN:
+        return False  # trop ancien : on revérifiera après sa mise à jour
+    try:
+        import xbmcaddon
+        vpn = xbmcaddon.Addon(PROTONVPN)
+        changed = vpn.getSetting('bypass_youtube') != 'true'
+        if changed:
+            vpn.setSetting('bypass_youtube', 'true')
+    except (RuntimeError, OSError) as exc:
+        _log('activation automatique impossible : %s' % exc)
+        return False
+    try:
+        os.makedirs(profile, exist_ok=True)
+        open(marker, 'w').close()
+    except OSError:
+        pass
+    if changed:
+        _log('option « YouTube hors du VPN » activée dans ProtonVPN')
+    return changed

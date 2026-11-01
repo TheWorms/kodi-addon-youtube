@@ -3,7 +3,7 @@
 # Wtube — YouTube pour Kodi
 
 <!-- version:auto -->
-**Version : 0.6.20**
+**Version : 0.6.21**
 <!-- /version:auto -->
 
 Module Kodi pour regarder **YouTube sans compte et sans clé d'API Google**, avec une interface
@@ -85,11 +85,23 @@ ajoutés au moment du build à partir de [`vendor.txt`](vendor.txt).
 
 ### YouTube hors du VPN
 
-YouTube freine fortement les adresses de VPN (refus « 429 », vérification anti-robot). Avec
-l'addon [ProtonVPN](https://github.com/TheWorms/kodi-addon-protonvpn) 0.5.13 ou plus, l'option
-**YouTube hors du VPN** fait sortir le trafic Google / YouTube par la connexion normale ; Wtube
-ajoute lui-même une route directe pour chaque serveur vidéo hébergé chez le fournisseur d'accès.
-Le reste du trafic reste dans le tunnel.
+YouTube freine fortement les adresses de VPN (refus « 429 », vérification anti-robot, nouveautés
+vides). Avec l'addon [ProtonVPN](https://github.com/TheWorms/kodi-addon-protonvpn) 0.5.13 ou plus,
+l'option **YouTube hors du VPN** fait sortir le trafic Google / YouTube par la connexion normale ;
+Wtube ajoute lui-même une route directe pour chaque serveur vidéo hébergé chez le fournisseur
+d'accès. Le reste du trafic reste dans le tunnel.
+
+**Activation automatique.** Si ProtonVPN est installé, Wtube active cette option **une seule fois**,
+au démarrage de Kodi, et l'annonce par une notification. Si ProtonVPN est installé ou mis à jour plus
+tard, l'activation a lieu au démarrage suivant.
+
+- Pour garder YouTube dans le VPN : désactive l'option dans ProtonVPN (Paramètres → Accueil →
+  « YouTube hors du VPN ») ; Wtube ne la réactivera pas.
+- Pour que Wtube n'y touche jamais : Wtube → Réglages → Général → décocher « Activer automatiquement
+  « YouTube hors du VPN » dans ProtonVPN » avant le premier démarrage.
+
+> Avec cette option, Google et YouTube voient ton adresse IP réelle (celle de ta box) au lieu de
+> celle du VPN. Si tu utilises le VPN justement pour te cacher de Google, désactive-la.
 
 ## Données et vie privée
 

@@ -3,7 +3,7 @@
 # Wtube — YouTube for Kodi
 
 <!-- version:auto -->
-**Version : 0.6.20**
+**Version : 0.6.21**
 <!-- /version:auto -->
 
 Kodi add-on to watch **YouTube without an account or a Google API key**, with a full-screen
@@ -83,11 +83,23 @@ added at build time from [`vendor.txt`](vendor.txt).
 
 ### YouTube outside the VPN
 
-YouTube heavily throttles VPN addresses ("429" refusals, bot checks). With the
+YouTube heavily throttles VPN addresses ("429" refusals, bot checks, empty new-video lists). With the
 [ProtonVPN](https://github.com/TheWorms/kodi-addon-protonvpn) add-on 0.5.13 or later, the
 **YouTube outside the VPN** option sends Google / YouTube traffic through the normal connection;
 Wtube itself adds a direct route for each video server hosted by the internet provider. All other
 traffic stays in the tunnel.
+
+**Automatic activation.** If ProtonVPN is installed, Wtube turns this option on **once**, when Kodi
+starts, and says so in a notification. If ProtonVPN is installed or updated later, this happens at the
+next start.
+
+- To keep YouTube inside the VPN: turn the option off in ProtonVPN (Settings → Home → "YouTube
+  outside the VPN"); Wtube will not turn it back on.
+- To stop Wtube from ever touching it: Wtube → Settings → General → untick "Turn on “YouTube outside
+  the VPN” in ProtonVPN automatically" before the first start.
+
+> With this option, Google and YouTube see your real IP address (your router's) instead of the
+> VPN's. If you use the VPN precisely to hide from Google, turn it off.
 
 ## Data and privacy
 

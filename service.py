@@ -9,7 +9,7 @@ import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
-from resources.lib import feed, widgets
+from resources.lib import direct, feed, widgets
 from resources.lib.hlsproxy import PROPERTY, Relay
 from resources.lib.storage import Storage
 
@@ -78,6 +78,12 @@ def run():
         xbmc.log('[wtube] relais HLS : aucun port libre, SponsorBlock passera par le saut', xbmc.LOGWARNING)
     profile = xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo('profile'))
     monitor = xbmc.Monitor()
+    try:
+        addon = xbmcaddon.Addon()
+        if direct.auto_enable_protonvpn(profile, addon):
+            xbmcgui.Dialog().notification('Wtube', addon.getLocalizedString(30311), xbmcgui.NOTIFICATION_INFO, 8000)
+    except Exception as exc:  # jamais bloquant pour le service
+        xbmc.log('[wtube] ProtonVPN : %s' % exc, xbmc.LOGWARNING)
     next_refresh = time.time() + 20  # laisse Kodi finir de démarrer
     worker = None
     while not monitor.waitForAbort(15):

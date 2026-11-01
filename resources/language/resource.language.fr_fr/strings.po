@@ -554,3 +554,11 @@ msgstr "Fondu entre les vidéos enchaînées (image et son)"
 msgctxt "#30309"
 msgid "UP NEXT"
 msgstr "À SUIVRE"
+
+msgctxt "#30310"
+msgid "Turn on “YouTube outside the VPN” in ProtonVPN automatically"
+msgstr "Activer automatiquement « YouTube hors du VPN » dans ProtonVPN"
+
+msgctxt "#30311"
+msgid "ProtonVPN: “YouTube outside the VPN” turned on"
+msgstr "ProtonVPN : « YouTube hors du VPN » activé"
