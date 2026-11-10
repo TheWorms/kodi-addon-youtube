@@ -209,7 +209,7 @@ def _probe_hls(master_url, headers, max_height, timeout=6):
     from urllib.parse import urljoin
 
     def get(url, limit=None):
-        direct.ensure_url(url)  # option « YouTube hors du VPN » : route directe d'abord
+        direct.ensure_url(url)  # exceptions ProtonVPN (route directe) : avant la connexion
         req = urllib.request.Request(url, headers=dict(headers))
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             if resp.status not in (200, 206):
@@ -274,7 +274,7 @@ def _probe(url, headers, timeout=6):
     de Kodi pour les flux qu'il refuse (constaté le 31/10/2026).
     """
     import urllib.request
-    direct.ensure_url(url)  # option « YouTube hors du VPN » : route directe d'abord
+    direct.ensure_url(url)  # exceptions ProtonVPN (route directe) : avant la connexion
     req = urllib.request.Request(url, headers=dict(headers, Range='bytes=0-'))
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:

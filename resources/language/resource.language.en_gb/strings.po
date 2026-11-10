@@ -555,10 +555,3 @@ msgctxt "#30309"
 msgid "UP NEXT"
 msgstr ""
 
-msgctxt "#30310"
-msgid "Turn on “YouTube outside the VPN” in ProtonVPN automatically"
-msgstr ""
-
-msgctxt "#30311"
-msgid "ProtonVPN: “YouTube outside the VPN” turned on"
-msgstr ""

@@ -224,7 +224,7 @@ class PlaybackMixin:
         if stream is not None:
             log('%s : flux préchargé, démarrage immédiat' % video_id)
         stream = stream or self.ex.resolve(video_id)
-        direct.ensure_url(stream.url)  # option « YouTube hors du VPN » (flux préchargé compris)
+        direct.ensure_url(stream.url)  # exceptions ProtonVPN, route directe (flux préchargé compris)
         segments = []
         if self.addon.getSettingBool('sponsorblock') and not stream.is_live:
             from .sponsorblock import get_segments

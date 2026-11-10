@@ -160,11 +160,6 @@
             <heading>30298</heading>
           </control>
         </setting>
-        <setting id="vpn_auto_bypass" type="boolean" label="30310">
-          <level>0</level>
-          <default>true</default>
-          <control type="toggle"/>
-        </setting>
         <setting id="hide_shorts" type="boolean" label="30285">
           <level>0</level>
           <default>true</default>

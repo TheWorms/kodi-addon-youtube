@@ -92,7 +92,7 @@ def fetch_all(channel_ids, max_workers=4, previous=None, fallback=None):
     """
     if not channel_ids:
         return [], 0
-    direct.ensure_host('www.youtube.com')  # option « YouTube hors du VPN »
+    direct.ensure_host('www.youtube.com')  # exceptions ProtonVPN (route directe)
     with ThreadPoolExecutor(max_workers=max_workers) as pool:  # 4 : moins de refus 429
         results = list(pool.map(fetch_channel, channel_ids))
     failed = 0

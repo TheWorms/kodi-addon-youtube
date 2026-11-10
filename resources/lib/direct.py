@@ -2,14 +2,13 @@
 """Routage direct (hors VPN) des serveurs YouTube utilisés par Wtube.
 
 Fonctionne avec l'option « YouTube hors du VPN » de l'addon ProtonVPN
-(service.protonvpn.manager >= 0.5.13), qui publie la propriété Home
-PROP avec le numéro de sa table de routage directe et y envoie déjà les
-plages d'adresses de Google. Les serveurs vidéo peuvent toutefois être des
-caches hébergés chez le fournisseur d'accès, hors de ces plages : avant de
-les contacter, Wtube ajoute une règle /32 pour chacun, dans la même table
-et à la même priorité. L'addon ProtonVPN les retire avec les siennes.
-
-Sans l'option (propriété absente), rien n'est fait.
+0.5.13 à 0.5.17, qui publiait la propriété Home PROP avec le numéro de sa
+table de routage directe et y envoyait les plages d'adresses de Google. Les
+serveurs vidéo pouvant être des caches hébergés chez le fournisseur
+d'accès, hors de ces plages, Wtube ajoutait une règle /32 pour chacun dans
+la même table. ProtonVPN 0.6 remplace cette option par une pause du VPN
+pendant l'utilisation de Wtube et ne publie plus PROP : ce module ne fait
+alors plus rien.
 """
 import ipaddress
 import socket
@@ -48,7 +47,7 @@ def _log(msg, warning=False):
 def check_route():
     """Une fois par processus : YouTube sort-il vraiment hors du tunnel ?
 
-    Les règles de l'option peuvent exister sans s'appliquer : ProtonVPN
+    Les règles de la route directe peuvent exister sans s'appliquer : ProtonVPN
     0.5.14 et avant laissait wg-quick placer les siennes devant après une
     reconnexion. Tout repartait alors dans le VPN (HTTP 429, vidéos coupées)
     sans aucune trace. Retourne le nom de l'interface de sortie ('' si inconnu).
@@ -61,8 +60,8 @@ def check_route():
     parts = out.split()
     dev = parts[parts.index('dev') + 1] if ok and 'dev' in parts[:-1] else ''
     if dev.startswith(TUNNEL_DEVS):
-        _log('YouTube sort encore par le VPN (%s) malgré l\'option : '
-             'mettre à jour ProtonVPN (0.5.15 ou plus récent)' % dev, warning=True)
+        _log('YouTube sort encore par le VPN (%s) malgré la route directe : '
+             'mettre à jour ProtonVPN (0.6 ou plus récent)' % dev, warning=True)
     return dev
 
 
@@ -95,13 +94,13 @@ def _existing(table):
 
 
 def active():
-    """L'option « YouTube hors du VPN » de ProtonVPN est-elle en service ?"""
+    """Wtube est-il en route directe dans les exceptions de ProtonVPN ?"""
     return bool(_table()) and not _disabled
 
 
 def ensure_host(host):
-    """Route directe pour toutes les adresses IPv4 de `host` (si l'option
-    ProtonVPN est active). Ne lève jamais d'exception."""
+    """Route directe pour toutes les adresses IPv4 de `host` (si Wtube est
+    en route directe dans ProtonVPN). Ne lève jamais d'exception."""
     global _disabled
     table = _table()
     if not table or not host or _disabled:
@@ -132,7 +131,7 @@ def ensure_host(host):
         ok, _ = _ip(['rule', 'add', 'to', ip + '/32', 'lookup', table, 'pref', table])
         if not ok:
             _disabled = True
-            _log('impossible d\'ajouter une route (droits ?), option ignorée')
+            _log('impossible d\'ajouter une route (droits ?), route directe ignorée')
             return
         _log('%s (%s) en direct' % (host, ip))
 
@@ -142,51 +141,3 @@ def ensure_url(url):
         ensure_host(urlsplit(url).hostname)
     except Exception:  # jamais bloquant pour la lecture
         pass
-
-
-# --- activation automatique de l'option dans l'addon ProtonVPN ------------------
-PROTONVPN = 'service.protonvpn.manager'
-PROTONVPN_MIN = (0, 5, 13)  # première version avec l'option « YouTube hors du VPN »
-AUTO_MARKER = 'protonvpn_bypass_auto'
-
-
-def _version(text):
-    out = []
-    for part in (text or '').split('.'):
-        digits = ''.join(ch for ch in part if ch.isdigit())
-        out.append(int(digits) if digits else 0)
-    return tuple(out)
-
-
-def auto_enable_protonvpn(profile, addon):
-    """Une seule fois : si l'addon ProtonVPN (>= 0.5.13) est installé, active
-    son option « YouTube hors du VPN ». Réglage de Wtube pour s'en passer ;
-    si l'utilisateur la désactive ensuite dans ProtonVPN, Wtube n'y touche plus.
-    Retourne True si l'option vient d'être activée."""
-    import os
-    if xbmc is None or addon.getSetting('vpn_auto_bypass') == 'false':
-        return False
-    marker = os.path.join(profile, AUTO_MARKER)
-    if os.path.exists(marker):
-        return False
-    if not xbmc.getCondVisibility('System.HasAddon(%s)' % PROTONVPN):
-        return False  # pas (encore) installé : on revérifiera au prochain démarrage
-    if _version(xbmc.getInfoLabel('System.AddonVersion(%s)' % PROTONVPN)) < PROTONVPN_MIN:
-        return False  # trop ancien : on revérifiera après sa mise à jour
-    try:
-        import xbmcaddon
-        vpn = xbmcaddon.Addon(PROTONVPN)
-        changed = vpn.getSetting('bypass_youtube') != 'true'
-        if changed:
-            vpn.setSetting('bypass_youtube', 'true')
-    except (RuntimeError, OSError) as exc:
-        _log('activation automatique impossible : %s' % exc)
-        return False
-    try:
-        os.makedirs(profile, exist_ok=True)
-        open(marker, 'w').close()
-    except OSError:
-        pass
-    if changed:
-        _log('option « YouTube hors du VPN » activée dans ProtonVPN')
-    return changed
