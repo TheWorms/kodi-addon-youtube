@@ -118,7 +118,7 @@ def filter_media(text, base_url, ranges):
     out, pending = [], []
     t = 0.0
     dropped, removed = 0, 0.0
-    kept_any, gap, has_end, has_type = False, False, False, False
+    kept_any, gap, has_type = False, False, False
     byte_end = {}  # uri -> fin du dernier BYTERANGE (offsets implicites)
 
     for raw in text.splitlines():
@@ -128,7 +128,7 @@ def filter_media(text, base_url, ranges):
         name = line.split(':', 1)[0]
         if line.startswith('#'):
             if name == '#EXT-X-ENDLIST':
-                has_end = True
+                pass  # remise à la fin, une seule fois
             elif name in _PER_SEGMENT:
                 pending.append(line)
             else:

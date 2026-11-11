@@ -9,25 +9,33 @@ import os
 import re
 import shutil
 import sys
-import threading
 from dataclasses import dataclass, field
-from urllib.parse import quote, urlencode, urlsplit
+from urllib.parse import quote, urlencode
 
 import xbmc
-
-from . import direct
 
 # yt-dlp est embarqué dans resources/lib/vendor (absent du dépôt officiel Kodi).
 _VENDOR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'vendor')
 if os.path.isdir(_VENDOR) and _VENDOR not in sys.path:
     sys.path.insert(0, _VENDOR)
 
-try:
-    from yt_dlp import YoutubeDL
-    from yt_dlp.utils import DownloadError
-except ImportError:  # dossier vendor/ absent
-    YoutubeDL = None
-    DownloadError = Exception
+# yt-dlp demande Python 3.11 ou plus récent, donc Kodi 21 (Omega) sur les
+# plateformes où Kodi embarque son propre Python. En dessous, on n'essaie
+# même pas de l'importer : le message d'erreur dit pourquoi.
+PYTHON_MIN = (3, 11)
+PYTHON_OK = sys.version_info >= PYTHON_MIN
+
+YoutubeDL = None
+DownloadError = Exception
+if PYTHON_OK:
+    try:
+        from yt_dlp import YoutubeDL
+        from yt_dlp.utils import DownloadError
+    except ImportError:  # dossier vendor/ absent
+        pass
+else:
+    xbmc.log('[wtube] Python %d.%d trop ancien pour yt-dlp (%d.%d minimum) : Kodi 21 ou plus récent requis'
+             % (sys.version_info[0], sys.version_info[1], PYTHON_MIN[0], PYTHON_MIN[1]), xbmc.LOGERROR)
 
 
 RUNTIMES = (('deno', 'deno'), ('node', 'node'), ('qjs', 'quickjs'))
@@ -209,7 +217,6 @@ def _probe_hls(master_url, headers, max_height, timeout=6):
     from urllib.parse import urljoin
 
     def get(url, limit=None):
-        direct.ensure_url(url)  # exceptions ProtonVPN (route directe) : avant la connexion
         req = urllib.request.Request(url, headers=dict(headers))
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             if resp.status not in (200, 206):
@@ -235,35 +242,9 @@ def _probe_hls(master_url, headers, max_height, timeout=6):
         playlist = get(variant_url).decode('utf-8', 'replace')
         segments = [urljoin(variant_url, l.strip()) for l in playlist.splitlines()
                     if l.strip() and not l.startswith('#')]
-        if direct.active():
-            # Hors VPN : tous les serveurs de la vidéo doivent être routés en
-            # direct, sinon un segment servi par un autre serveur passerait par
-            # le tunnel et serait refusé en cours de lecture (vidéo coupée).
-            for host in {urlsplit(u).hostname for u in segments}:
-                direct.ensure_host(host)
-            others = [u for _, u in variants if u != variant_url]
-            threading.Thread(target=_route_variants, args=(others, headers, timeout), daemon=True).start()
         return bool(segments) and len(get(segments[0], 65536)) > 0
     except Exception:  # erreur HTTP, connexion coupée, délai dépassé
         return False
-
-
-def _route_variants(urls, headers, timeout):
-    """Routes directes pour les serveurs des autres qualités (changement de
-    qualité en cours de lecture), en arrière-plan."""
-    import urllib.request
-    from urllib.parse import urljoin
-    for url in urls:
-        try:
-            direct.ensure_url(url)
-            req = urllib.request.Request(url, headers=dict(headers))
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                text = resp.read().decode('utf-8', 'replace')
-            for host in {urlsplit(urljoin(url, l.strip())).hostname for l in text.splitlines()
-                         if l.strip() and not l.startswith('#')}:
-                direct.ensure_host(host)
-        except Exception:
-            continue
 
 
 def _probe(url, headers, timeout=6):
@@ -274,7 +255,6 @@ def _probe(url, headers, timeout=6):
     de Kodi pour les flux qu'il refuse (constaté le 31/10/2026).
     """
     import urllib.request
-    direct.ensure_url(url)  # exceptions ProtonVPN (route directe) : avant la connexion
     req = urllib.request.Request(url, headers=dict(headers, Range='bytes=0-'))
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -334,6 +314,9 @@ def _pick_subtitles(info, langs=('fr', 'en')):
 class Extractor:
     def __init__(self, profile_dir, cookies='', max_height=1080, hls=False, js_runtime=None,
                  clients=DEFAULT_CLIENTS):
+        if not PYTHON_OK:
+            raise ExtractorError('Wtube demande Kodi 21 ou plus récent (Python %d.%d minimum, ici %d.%d)'
+                                 % (PYTHON_MIN[0], PYTHON_MIN[1], sys.version_info[0], sys.version_info[1]))
         if YoutubeDL is None:
             raise ExtractorError('yt-dlp introuvable (resources/lib/vendor)')
         self.profile_dir = profile_dir
@@ -369,7 +352,6 @@ class Extractor:
         return opts
 
     def _extract(self, url, **opts):
-        direct.ensure_host('www.youtube.com')
         try:
             with YoutubeDL(self._opts(**opts)) as ydl:
                 return ydl.extract_info(url, download=False)
