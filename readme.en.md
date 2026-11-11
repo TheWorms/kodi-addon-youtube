@@ -7,7 +7,7 @@
 # Wtube — YouTube for Kodi
 
 <!-- version:auto -->
-**Version : 0.6.26**
+**Version : 0.6.27**
 <!-- /version:auto -->
 
 Kodi add-on to watch **YouTube without an account or a Google API key**, with a full-screen
