@@ -21,7 +21,7 @@ import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
-from . import feed, upnext, widgets
+from . import feed, launcher, upnext, widgets
 from .extractor import DEFAULT_CLIENTS, Extractor, ExtractorError, find_js_runtime
 from .storage import Storage
 from .utils import fmt_count, parse_target
@@ -330,6 +330,7 @@ class MainWindow(xbmcgui.WindowXML):
             return
         self._ready = True
         log('fenêtre affichée')
+        launcher.splash_hide()  # l'interface est là : l'écran de chargement s'efface
         self._fill(NAV, self._nav_items())
         # La barre latérale est vide quand Kodi applique le focus par défaut
         # (« Control 9000 … can't focus ») : on le pose une fois remplie.

@@ -9,7 +9,7 @@ import xbmcaddon
 import xbmcgui
 import xbmcvfs
 
-from resources.lib import feed, widgets
+from resources.lib import feed, launcher, widgets
 from resources.lib.hlsproxy import PROPERTY, Relay
 from resources.lib.storage import Storage
 
@@ -67,6 +67,53 @@ def _safe_refresh(profile):
         xbmc.log('[wtube] rafraîchissement du flux : %s' % exc, xbmc.LOGWARNING)
 
 
+class SplashHost:
+    """Affiche l'écran de chargement à la demande de l'entrée plugin ou
+    script. Le service est déjà en mémoire : l'écran apparaît dès le clic,
+    avant même que l'interpréteur de l'interface ait démarré."""
+    MAX_SECONDS = 25  # filet : jamais d'écran de chargement bloqué à l'écran
+
+    def __init__(self):
+        self.home = xbmcgui.Window(10000)
+        self.path = xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo('path'))
+        self.window = None
+        self.since = 0.0
+        self.home.clearProperty(launcher.PROP_SPLASH)
+        self.home.setProperty(launcher.PROP_ALIVE, '1')
+
+    def _close(self):
+        if self.window is not None:
+            try:
+                self.window.close()
+            except Exception:
+                pass
+            self.window = None
+
+    def poll(self):
+        try:
+            order = self.home.getProperty(launcher.PROP_SPLASH)
+            if order:
+                self.home.clearProperty(launcher.PROP_SPLASH)
+            if order == 'show' and self.window is None:
+                self.window = xbmcgui.WindowXMLDialog(launcher.SPLASH_XML, self.path, 'Default',
+                                                      launcher.SPLASH_RES)
+                self.window.show()
+                self.since = time.time()
+            elif order == 'hide':
+                self._close()
+            elif self.window is not None and time.time() - self.since > self.MAX_SECONDS:
+                xbmc.log('[wtube] écran de chargement fermé d\'office', xbmc.LOGWARNING)
+                self._close()
+        except Exception as exc:  # ne doit jamais faire tomber le relais
+            xbmc.log('[wtube] écran de chargement : %s' % exc, xbmc.LOGWARNING)
+            self.window = None
+
+    def stop(self):
+        self.home.clearProperty(launcher.PROP_ALIVE)
+        self.home.clearProperty(launcher.PROP_SPLASH)
+        self._close()
+
+
 def run():
     relay = Relay()
     port = relay.start()
@@ -80,7 +127,15 @@ def run():
     monitor = xbmc.Monitor()
     next_refresh = time.time() + 20  # laisse Kodi finir de démarrer
     worker = None
-    while not monitor.waitForAbort(15):
+    splash = SplashHost()
+    last_tick = time.time()
+    # Boucle à 20 Hz pour l'écran de chargement (une lecture de propriété) ;
+    # le reste garde son rythme de 15 s.
+    while not monitor.waitForAbort(0.05):
+        splash.poll()
+        if time.time() - last_tick < 15:
+            continue
+        last_tick = time.time()
         # Rafraîchissement dans un fil à part : la boucle reste réactive à
         # l'arrêt de Kodi même si YouTube répond lentement (429, VPN).
         due = time.time() >= next_refresh or _subs_changed(profile)
@@ -92,6 +147,7 @@ def run():
     # instance du service, après une mise à jour, a pu en publier une autre).
     if port and home.getProperty(PROPERTY) == str(port):
         home.clearProperty(PROPERTY)
+    splash.stop()
     relay.stop()
 
 
