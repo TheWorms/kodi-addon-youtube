@@ -107,6 +107,32 @@ def _search_cache_path(cache_dir, query):
     return os.path.join(cache_dir, 'widget_search_%s.json' % key)
 
 
+SEARCH_KEEP = 7 * 86400  # 0.6.30 : caches de recherche effacés après 7 jours
+
+
+def purge_search_cache(cache_dir, now=None, keep=SEARCH_KEEP):
+    """0.6.30 (audit du 12/11/2026) : chaque recherche lancée depuis une fiche
+    du skin crée un fichier ; aucun n'était jamais effacé. Retourne le nombre
+    de fichiers effacés."""
+    now = time.time() if now is None else now
+    removed = 0
+    try:
+        names = os.listdir(cache_dir)
+    except OSError:
+        return 0
+    for name in names:
+        if not (name.startswith('widget_search_') and name.endswith('.json')):
+            continue
+        path = os.path.join(cache_dir, name)
+        try:
+            if now - os.path.getmtime(path) > keep:
+                os.remove(path)
+                removed += 1
+        except OSError:
+            continue
+    return removed
+
+
 def cached_search(ex, cache_dir, query, size):
     path = _search_cache_path(cache_dir, query)
     try:

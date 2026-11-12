@@ -39,7 +39,7 @@ else:
 
 
 RUNTIMES = (('deno', 'deno'), ('node', 'node'), ('qjs', 'quickjs'))
-# Test du 31/10/2026 sur Cormoran (yt-dlp 2026.10.26, moteur JavaScript) :
+# Test du 31/10/2026 sur la box (yt-dlp 2026.10.26, moteur JavaScript) :
 # tv_simply et web_embedded donnent un flux qui se télécharge ; les flux de
 # mweb et android_vr sont coupés faute de « PO Token » ; tv, web, web_safari
 # et ios sont bloqués. Réglable dans les réglages (avancé).

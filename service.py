@@ -77,6 +77,9 @@ def run():
     else:
         xbmc.log('[wtube] relais HLS : aucun port libre, SponsorBlock passera par le saut', xbmc.LOGWARNING)
     profile = xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo('profile'))
+    removed = widgets.purge_search_cache(profile)
+    if removed:
+        xbmc.log('[wtube] %d recherche(s) en cache de plus de 7 jours effacée(s)' % removed, xbmc.LOGINFO)
     monitor = xbmc.Monitor()
     next_refresh = time.time() + 20  # laisse Kodi finir de démarrer
     worker = None
