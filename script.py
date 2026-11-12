@@ -13,11 +13,12 @@ xbmc.log('[wtube] ouverture (raccourci) : démarrage', xbmc.LOGINFO)
 
 from resources.lib import launcher  # noqa: E402
 
-# Écran de chargement d'abord : les modules mettent du temps à se charger.
+# L'accueil de Kodi sous l'interface (à la fermeture, pas d'explorateur),
+# PUIS l'écran de chargement : dans l'autre ordre, il bloque le changement
+# de fenêtre.
+launcher.go_home(launcher.HANDOFF_ARG in sys.argv[1:])
 launcher.splash_show(xbmcvfs.translatePath(xbmcaddon.Addon().getAddonInfo('path')))
 try:
-    # L'accueil de Kodi sous l'interface : à la fermeture, pas d'explorateur.
-    launcher.go_home(launcher.HANDOFF_ARG in sys.argv[1:])
 
     from resources.lib import compat  # noqa: E402
 
@@ -26,6 +27,7 @@ try:
     from resources.lib import gui  # noqa: E402
 
     xbmc.log('[wtube] ouverture : modules chargés en %.1f s' % (time.time() - STARTED), xbmc.LOGINFO)
-    gui.open_main()  # l'écran de chargement est fermé par la fenêtre dès qu'elle s'affiche
+    launcher.splash_hide()  # avant d'ouvrir : sinon Kodi refuse d'afficher l'interface
+    gui.open_main()
 finally:
     launcher.splash_hide()
